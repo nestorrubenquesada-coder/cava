@@ -40,7 +40,7 @@ No sirve abrir `index.html` con doble click (`file://`): el service worker neces
 2. Botón **Compartir** → **Añadir a pantalla de inicio**.
 3. Abrila desde el ícono nuevo: pantalla completa, funciona sin conexión.
 
-> ⚠️ **La app instalada tiene su propia base de datos, separada de Safari.** Lo que cargues en Safari no aparece en la app instalada (ni al revés). Instalá primero y cargá los datos ahí — o migrá con *Guardar cambios* en Safari (aparece cuando hay cambios sin respaldar) e *Importar respaldo* en la app instalada.
+> ⚠️ **La app instalada tiene su propia base de datos, separada de Safari.** Lo que cargues en Safari no aparece en la app instalada (ni al revés). Con la sincronización con GitHub configurada en ambas (ver «Respaldos»), migrar es *Guardar cambios* en una y *⚙ → Restaurar desde GitHub* en la otra.
 
 Otras notas de iOS:
 
@@ -48,12 +48,22 @@ Otras notas de iOS:
 - iOS ignora la orientación declarada en el manifiesto; la app está pensada para horizontal pero funciona en vertical.
 - El modo offline arranca a partir de la **segunda** visita (la primera instala el service worker).
 
-## Respaldos (iCloud Drive)
+## Respaldos (sincronización con GitHub)
 
-Los datos vivos están en IndexedDB del navegador; el JSON es solo el respaldo, y la única forma de volver a meterlo en la app es *Importar respaldo*.
+Los datos vivos están en IndexedDB del navegador; el respaldo es un JSON que, con la sincronización configurada, vive como **un único archivo en un repo de GitHub**: «Guardar cambios» lo sobreescribe vía la API (un commit por guardado, sin descargas) y «Restaurar desde GitHub» lo trae de vuelta. Funciona igual en Chrome, Safari y el iPad, y el historial de commits del repo es el historial de respaldos.
 
-- **Guardar cambios**: aparece en el header (en verde) solo cuando hay cambios sin respaldar. Exporta un JSON con todo (catálogo + posiciones) y desaparece hasta el próximo cambio. El archivo se llama siempre **`vinos-backup.json`** (sin fecha): en el iPad, la hoja de compartir → *Guardar en Archivos* → misma carpeta de iCloud Drive ofrece **Reemplazar**, así queda un único archivo y no se acumulan copias. (Contracara: no hay historial de respaldos anteriores. En descarga clásica de escritorio, el navegador puede renombrar a `vinos-backup (1).json` si ya existe.)
-- **Importar respaldo**: elegí un JSON exportado antes. Valida el formato, pide confirmación y **reemplaza por completo** los datos actuales. Si el archivo es inválido, no toca nada.
+### Configurar (una vez por dispositivo)
+
+1. Creá un repo **privado** para los datos (p. ej. `cava-datos`). Privado porque el respaldo incluye tus vinos y precios; y aparte del repo de la app, porque este es público y cada guardado dispararía un redeploy de Pages.
+2. Creá un token *fine-grained*: GitHub → **Settings → Developer settings → Fine-grained personal access tokens**. Acceso **solo** a ese repo, permiso **Contents: Read and write**, expiración larga.
+3. En la app: botón **⚙** → repositorio (`usuario/cava-datos`), rama (`main`), archivo (`vinos-backup.json`) y el token → **Probar conexión** → **Guardar**.
+4. Repetí el paso 3 en cada contexto que uses: Safari del iPad, la PWA instalada y Chrome de la compu tienen almacenamiento separado (el token queda solo en ese dispositivo; no lo commitees a ningún lado).
+
+### Uso
+
+- **Guardar cambios**: aparece en el header (en verde) solo cuando hay cambios sin respaldar; sube el respaldo y desaparece hasta el próximo cambio. Si falla (sin red, token vencido), avisa y el botón se queda.
+- **⚙ → Restaurar desde GitHub**: baja el respaldo, valida, pide confirmación y **reemplaza por completo** los datos locales. Es el camino para pasar datos entre dispositivos.
+- **⚙ → Exportar/Importar archivo**: fallback manual a JSON local (`vinos-backup.json`), útil sin conexión o sin configurar la sincronización. Sin configurar, «Guardar cambios» usa este flujo (hoja de compartir en iPad, descarga en escritorio).
 
 ## Ajustar la estructura de la cava
 

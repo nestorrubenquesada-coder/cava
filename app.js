@@ -17,7 +17,9 @@
 const LAYOUT = {
   tab1: {
     modulos: { cols: 6, filas: 4 },
-    slotsPorModulo: { cols: 4, filas: 3 },      // filas 1–3
+    slotsPorModulo: { cols: 4, filas: 3 },      // filas 1–2
+    filaParada: 3,                              // fila de botellas PARADAS: 4 huecos verticales
+                                                // (uno por columna), cada uno del alto del módulo
     ultimaFila: { cols: 4, filas: 5 },          // fila 4 (los 6 módulos de abajo)
   },
   tab2: {
@@ -42,6 +44,7 @@ const DB_NAME = 'cava';
 const DB_VERSION = 1;
 const THEME_KEY = 'cava-theme';
 const DIRTY_KEY = 'cava-dirty'; // hay cambios sin respaldar (ver §12)
+const GITHUB_KEY = 'cava-github'; // config de sincronización con GitHub (ver §12)
 const BACKUP_SCHEMA_VERSION = 1;
 const BACKUP_FILENAME = 'vinos-backup.json'; // nombre fijo: se reemplaza siempre el mismo archivo (ver §12)
 const SLOT_ID_RE = /^t([12])-m(\d{2})-(\d{2})-s(\d{2})-(\d{2})$/;
@@ -77,7 +80,7 @@ function fmtPrecio(n) {
        varietal y opcionales precioCompra, fechaCompra.
      - "slots": keyPath "id" (string derivado de la posición física, ver §4).
        Campos: vinoId (id de "vinos") o null si el hueco está vacío.
-   Sin índices: el dataset completo (≈490 slots + catálogo) se carga en
+   Sin índices: el dataset completo (≈460 slots + catálogo) se carga en
    memoria al arrancar y todo filtrado/conteo se hace ahí.
    ============================================================================ */
 
@@ -153,7 +156,9 @@ function describeSlot(id) {
   const p = parseSlotId(id);
   if (!p) return id;
   const nombreTab = p.tab === 1 ? 'Principal' : 'Secundaria';
-  return `Cava ${nombreTab} · Módulo fila ${p.modFila}, columna ${p.modCol} · Hueco fila ${p.slotFila}, columna ${p.slotCol}`;
+  const parado = p.tab === 1 && p.modFila === LAYOUT.tab1.filaParada;
+  const hueco = parado ? `Botella parada ${p.slotCol}` : `Hueco fila ${p.slotFila}, columna ${p.slotCol}`;
+  return `Cava ${nombreTab} · Módulo fila ${p.modFila}, columna ${p.modCol} · ${hueco}`;
 }
 
 /**
@@ -167,6 +172,17 @@ function modulesOf(tab) {
     const L = LAYOUT.tab1;
     for (let mf = 1; mf <= L.modulos.filas; mf++) {
       for (let mc = 1; mc <= L.modulos.cols; mc++) {
+        if (mf === L.filaParada) {
+          // Botellas paradas: una sola fila interna de huecos verticales.
+          // altoHuecos = cuántos huecos acostados mide de alto (el render
+          // estira esa única fila para que el módulo mida igual que uno normal).
+          out.push({
+            tab, modFila: mf, modCol: mc,
+            inner: { cols: L.slotsPorModulo.cols, filas: 1 },
+            alto: false, parado: true, altoHuecos: L.slotsPorModulo.filas,
+          });
+          continue;
+        }
         const inner = (mf === L.modulos.filas) ? L.ultimaFila : L.slotsPorModulo;
         out.push({ tab, modFila: mf, modCol: mc, inner, alto: false });
       }
@@ -229,7 +245,8 @@ const state = {
   pendingSlotId: null,   // hueco a asignar cuando se crea un vino desde el selector
   editingVinoId: null,   // vino en edición en el formulario (null = alta)
   mapScrollLeft: 0,      // página del carrusel al salir del mapa (se restaura al volver)
-  filters: { q: '', varietal: '', anio: '' },
+  filters: { q: '', varietal: '', anio: '' },     // filtros del catálogo (§10)
+  mapFilters: { q: '', varietal: '', anio: '' },  // filtros del MAPA (§8), independientes
 };
 
 /* ============================================================================
@@ -347,7 +364,12 @@ function applyRoute() {
   $('#btn-vinos').hidden = !enCava;
   $('#btn-volver').hidden = enCava;
 
-  if (enCava) mapArea.scrollLeft = state.mapScrollLeft;
+  if (enCava) {
+    mapArea.scrollLeft = state.mapScrollLeft;
+    // El evento scroll no se dispara si el valor no cambió (p. ej. página 0):
+    // resincronizar la tab activa explícitamente.
+    syncMapTabs();
+  }
 }
 
 function wireRouter() {
@@ -372,12 +394,16 @@ function buildTab(tab, panelEl) {
   const frag = document.createDocumentFragment();
   for (const mod of modulesOf(tab)) {
     const modEl = document.createElement('div');
-    modEl.className = mod.ciego ? 'mod mod--ciego' : 'mod';
+    modEl.className = 'mod' + (mod.ciego ? ' mod--ciego' : '') + (mod.parado ? ' mod--parado' : '');
     // La subcuadrícula interna sale de LAYOUT (única fuente de verdad).
     // Tracks fijos de --slot px: cada hueco es un cuadrado exacto (ver §7 del CSS).
     // En los módulos ciegos los tracks vacíos igual dan el tamaño del módulo.
+    // En los de botellas paradas, la única fila interna mide altoHuecos
+    // cuadrados: mismo alto exterior que un módulo normal, huecos verticales.
     modEl.style.gridTemplateColumns = `repeat(${mod.inner.cols}, var(--slot))`;
-    modEl.style.gridTemplateRows = `repeat(${mod.inner.filas}, var(--slot))`;
+    modEl.style.gridTemplateRows = mod.parado
+      ? `calc(${mod.altoHuecos} * var(--slot))`
+      : `repeat(${mod.inner.filas}, var(--slot))`;
     // Posición explícita en la grilla de módulos; el módulo alto ocupa 3 filas.
     modEl.style.gridColumn = String(mod.modCol);
     modEl.style.gridRow = mod.alto ? `${mod.modFila} / span 3` : String(mod.modFila);
@@ -418,36 +444,70 @@ function updateSlotEl(slotId) {
   els.label.textContent = vino ? norm(vino.bodega).charAt(0).toUpperCase() : '';
   els.btn.title = vino ? `${vino.nombre} — ${vino.bodega} (${vino.anio})` : '';
   els.btn.setAttribute('aria-label', `${vino ? vino.nombre : 'Hueco vacío'} — ${describeSlot(slotId)}`);
+  // El dim del filtro del mapa se re-evalúa acá para que cualquier mutación
+  // puntual (asignar, vaciar, borrar, importar) lo mantenga al día gratis.
+  els.btn.classList.toggle('slot--dim', slotDimmed(vino));
 }
 
 function refreshAllSlotEls() {
   for (const id of state.slotEls.keys()) updateSlotEl(id);
 }
 
-/* Carrusel: flechas para pasar de sección (el swipe táctil lo da el scroll
-   solo; acá solo se pagina con las flechas y se alterna cuál se muestra).
-   En modo ancho cada panel mide exactamente una página, pero en modo paneo
-   (§12 del CSS, iPhone) los paneles son más anchos que el viewport: por eso
-   la paginación usa el offset real del segundo panel y no múltiplos de
-   clientWidth. */
-function wireMapPager() {
+/* Filtro del mapa: state.mapFilters atenúa (.slot--dim) los huecos cuyo
+   vino no coincide, y también los vacíos, para que los que coinciden salten
+   a la vista. updateSlotEl consulta slotDimmed() en cada actualización
+   puntual, así toda mutación re-aplica el filtro sin pasos extra. */
+function isMapFilterActive() {
+  const f = state.mapFilters;
+  return !!(f.q.trim() || f.varietal || f.anio);
+}
+
+function slotDimmed(vino) {
+  return isMapFilterActive() && (!vino || !vinoMatchesFilters(vino, state.mapFilters));
+}
+
+function applyMapFilter() {
+  for (const [id, els] of state.slotEls) {
+    const slot = state.slots.get(id);
+    const vino = slot && slot.vinoId ? state.vinos.get(slot.vinoId) : null;
+    els.btn.classList.toggle('slot--dim', slotDimmed(vino));
+  }
+}
+
+function wireMapFilters() {
+  $('#mf-q').addEventListener('input', (e) => { state.mapFilters.q = e.target.value; applyMapFilter(); });
+  $('#mf-varietal').addEventListener('change', (e) => { state.mapFilters.varietal = e.target.value; applyMapFilter(); });
+  $('#mf-anio').addEventListener('change', (e) => { state.mapFilters.anio = e.target.value; applyMapFilter(); });
+}
+
+/* Carrusel: selector flotante para pasar de sección (el swipe táctil lo da
+   el scroll solo; el segmento activo se sincroniza con el scroll). En modo
+   ancho cada panel mide exactamente una página, pero en modo paneo (§12 del
+   CSS, iPhone) los paneles son más anchos que el viewport: por eso se pagina
+   por el offset real del segundo panel y no por múltiplos de clientWidth. */
+let syncMapTabs = () => {}; // la reasigna wireMapTabs; applyRoute (§7) la llama al volver
+
+function wireMapTabs() {
   const area = $('.map-area');
-  const prev = $('#map-prev');
-  const next = $('#map-next');
   const panel2 = area.children[1];
+  const tabs = [$('#tab-t1'), $('#tab-t2')];
+  const setActive = (i) => tabs.forEach((t, j) => {
+    if (j === i) t.setAttribute('aria-current', 'true');
+    else t.removeAttribute('aria-current');
+  });
 
-  const go = (dir) => area.scrollTo({ left: dir > 0 ? panel2.offsetLeft : 0, behavior: 'smooth' });
-  prev.addEventListener('click', () => go(-1));
-  next.addEventListener('click', () => go(1));
+  tabs.forEach((tab, i) => tab.addEventListener('click', () => {
+    setActive(i); // feedback inmediato; el listener de scroll lo re-confirma
+    area.scrollTo({ left: i === 0 ? 0 : panel2.offsetLeft, behavior: 'smooth' });
+  }));
 
-  const update = () => {
+  syncMapTabs = () => {
+    if (area.clientWidth === 0) return; // vista oculta: no decidir con todo en 0
     // "En la segunda" = el centro del viewport ya cruzó al segundo panel.
-    const enSegunda = area.scrollLeft + area.clientWidth / 2 >= panel2.offsetLeft;
-    prev.hidden = !enSegunda;
-    next.hidden = enSegunda;
+    setActive(area.scrollLeft + area.clientWidth / 2 >= panel2.offsetLeft ? 1 : 0);
   };
-  area.addEventListener('scroll', update, { passive: true });
-  update();
+  area.addEventListener('scroll', syncMapTabs, { passive: true });
+  syncMapTabs();
 }
 
 /* ============================================================================
@@ -583,8 +643,9 @@ function wireSlotDialog() {
    10. VISTA VINOS (catálogo)
    ============================================================================ */
 
-function vinoMatchesFilters(vino) {
-  const f = state.filters;
+/** ¿El vino cumple los filtros f ({q, varietal, anio})? Lo usan el catálogo
+    (state.filters) y el filtro del mapa (state.mapFilters). */
+function vinoMatchesFilters(vino, f) {
   if (f.q) {
     const q = norm(f.q);
     if (!norm(vino.nombre).includes(q) && !norm(vino.bodega).includes(q)) return false;
@@ -594,14 +655,32 @@ function vinoMatchesFilters(vino) {
   return true;
 }
 
-/** Rellena los selects de filtro con los valores presentes en el catálogo. */
-function populateFilterOptions() {
-  const varietales = [...new Set([...state.vinos.values()].map((v) => v.varietal))]
-    .sort((a, b) => norm(a).localeCompare(norm(b)));
-  const anios = [...new Set([...state.vinos.values()].map((v) => v.anio))].sort((a, b) => b - a);
+/** Valores únicos presentes en el catálogo, para los selects de filtro. */
+function collectFilterValues() {
+  const vinos = [...state.vinos.values()];
+  return {
+    varietales: [...new Set(vinos.map((v) => v.varietal))].sort((a, b) => norm(a).localeCompare(norm(b))),
+    anios: [...new Set(vinos.map((v) => v.anio))].sort((a, b) => b - a),
+  };
+}
 
+/** Rellena los selects de filtro del catálogo con los valores presentes. */
+function populateFilterOptions() {
+  const { varietales, anios } = collectFilterValues();
   rebuildSelect($('#f-varietal'), 'Todos los varietales', varietales.map((v) => [v, v]), state.filters.varietal);
   rebuildSelect($('#f-anio'), 'Todos los años', anios.map((a) => [String(a), String(a)]), state.filters.anio);
+}
+
+/** Ídem para los selects del mapa (§8). Si el valor elegido desapareció del
+    catálogo, rebuildSelect resetea el select a '': se re-lee el valor real
+    para que el filtro no quede "zombi", y se re-aplica el atenuado. */
+function populateMapFilterOptions() {
+  const { varietales, anios } = collectFilterValues();
+  rebuildSelect($('#mf-varietal'), 'Varietal', varietales.map((v) => [v, v]), state.mapFilters.varietal);
+  rebuildSelect($('#mf-anio'), 'Año', anios.map((a) => [String(a), String(a)]), state.mapFilters.anio);
+  state.mapFilters.varietal = $('#mf-varietal').value;
+  state.mapFilters.anio = $('#mf-anio').value;
+  applyMapFilter();
 }
 
 function rebuildSelect(selectEl, allLabel, pairs, current) {
@@ -625,7 +704,7 @@ function renderVinos() {
   const occ = occupancyMap();
 
   const rows = [...state.vinos.values()]
-    .filter(vinoMatchesFilters)
+    .filter((v) => vinoMatchesFilters(v, state.filters))
     .sort((a, b) => norm(a.nombre).localeCompare(norm(b.nombre)) || a.anio - b.anio);
 
   listEl.textContent = '';
@@ -721,6 +800,7 @@ function wireVinosView() {
       try {
         await deleteVino(vino.id);
         populateFilterOptions();
+        populateMapFilterOptions();
         renderVinos();
         toast('Vino borrado');
       } catch (err) {
@@ -838,6 +918,7 @@ function wireVinoForm() {
         state.pendingSlotId = null;
       }
       populateFilterOptions();
+      populateMapFilterOptions();
       renderVinos();
       refreshAllSlotEls(); // por si cambió la bodega (inicial) de un vino ya ubicado
       $('#dlg-vino').close();
@@ -853,20 +934,24 @@ function wireVinoForm() {
 }
 
 /* ============================================================================
-   12. RESPALDO: EXPORTAR / IMPORTAR JSON
-   Formato del archivo:
+   12. RESPALDO: SINCRONIZACIÓN CON GITHUB + EXPORTAR / IMPORTAR JSON
+   Formato del respaldo:
    { app: "cava", schemaVersion: 1, exportedAt: ISO, vinos: [...], slots: [...] }
-   El respaldo es UN único archivo con nombre fijo (BACKUP_FILENAME): al
-   guardarlo en la misma carpeta, Archivos (iOS) ofrece reemplazar el
-   anterior, así no se acumulan copias fechadas.
-   Importar reemplaza TODO el contenido en una sola transacción: si algo
-   falla, IndexedDB revierte también los clear() y no se pierde nada.
+
+   Con la sincronización configurada (⚙: repo/rama/archivo/token, guardado en
+   localStorage bajo GITHUB_KEY), "Guardar cambios" SUBE el respaldo al repo
+   vía la API de Contents, sobreescribiendo siempre el mismo archivo (el
+   historial de commits del repo es el historial de respaldos), y «Restaurar
+   desde GitHub» lo baja. Sin configurar, quedan los flujos a archivo local:
+   hoja de compartir (iPad) o descarga clásica, con nombre BACKUP_FILENAME.
+
+   Importar/restaurar reemplaza TODO el contenido en una sola transacción:
+   si algo falla, IndexedDB revierte también los clear() y no se pierde nada.
 
    "Cambios sin respaldar": cada mutación (vino o posición) marca un flag
    persistente en localStorage; mientras esté activo, aparece en el header
-   el botón verde "Guardar cambios" (que exporta el respaldo). Sin cambios
-   pendientes no hay botón. Exportar (o importar un respaldo, que deja los
-   datos iguales a un archivo guardado) lo limpia.
+   el botón verde "Guardar cambios". Respaldar (a GitHub o a archivo) o
+   importar un respaldo lo limpia.
    ============================================================================ */
 
 function isDirty() {
@@ -885,7 +970,96 @@ function updateSaveBtn() {
   $('#btn-export').hidden = !isDirty();
 }
 
-async function exportBackup() {
+/* --- Sincronización con GitHub (API de Contents) --- */
+
+function getGithubConfig() {
+  try {
+    const cfg = JSON.parse(localStorage.getItem(GITHUB_KEY) || 'null');
+    if (cfg && typeof cfg === 'object' && cfg.repo && cfg.token) {
+      return {
+        repo: cfg.repo,
+        branch: cfg.branch || 'main',
+        path: cfg.path || BACKUP_FILENAME,
+        token: cfg.token,
+      };
+    }
+  } catch (_) { /* modo privado o JSON corrupto: sin sincronización */ }
+  return null;
+}
+
+function setGithubConfig(cfg) {
+  try {
+    if (cfg) localStorage.setItem(GITHUB_KEY, JSON.stringify(cfg));
+    else localStorage.removeItem(GITHUB_KEY);
+    return true;
+  } catch (_) { return false; }
+}
+
+/** btoa/atob solo manejan latin-1: pasar por bytes UTF-8 (acentos: "Semillón"). */
+function b64EncodeUtf8(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  const CHUNK = 0x8000; // String.fromCharCode revienta con arrays muy largos
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+
+function b64DecodeUtf8(b64) {
+  const bin = atob(b64.replace(/\s/g, '')); // la API mete saltos de línea en el base64
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+/** Request al endpoint de Contents del archivo de respaldo configurado. */
+function ghContents(cfg, method, body) {
+  const url = `https://api.github.com/repos/${cfg.repo}/contents/${cfg.path}`
+    + (method === 'GET' ? `?ref=${encodeURIComponent(cfg.branch)}` : '');
+  return fetch(url, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${cfg.token}`,
+      'Accept': 'application/vnd.github+json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+function ghErrorMsg(status) {
+  if (status === 401) return 'Token inválido o vencido.';
+  if (status === 403) return 'El token no tiene permiso sobre ese repositorio.';
+  if (status === 404) return 'No se encontró el repositorio o el archivo (¿nombre mal escrito o el token no tiene acceso?).';
+  return `GitHub respondió ${status}.`;
+}
+
+/** Sube el respaldo sobreescribiendo SIEMPRE el mismo archivo del repo. */
+async function uploadBackupToGithub(cfg, json) {
+  const getSha = async () => {
+    const res = await ghContents(cfg, 'GET');
+    if (res.status === 404) return null; // primera vez: el archivo no existe todavía
+    if (!res.ok) throw new Error(ghErrorMsg(res.status));
+    return (await res.json()).sha;
+  };
+  const put = (sha) => ghContents(cfg, 'PUT', {
+    message: `Respaldo de cava — ${new Date().toLocaleString('es-AR')}`,
+    content: b64EncodeUtf8(json),
+    branch: cfg.branch,
+    ...(sha ? { sha } : {}),
+  });
+
+  let res = await put(await getSha());
+  if (res.status === 409 || res.status === 422) {
+    // Otro dispositivo guardó en el medio (sha viejo): reintentar UNA vez.
+    res = await put(await getSha());
+  }
+  if (!res.ok) throw new Error(ghErrorMsg(res.status));
+}
+
+/* --- Exportar --- */
+
+async function buildBackupJson() {
   const [vinos, slots] = await withTx(state.db, ['vinos', 'slots'], 'readonly', (tx) =>
     Promise.all([req(tx.objectStore('vinos').getAll()), req(tx.objectStore('slots').getAll())])
   );
@@ -896,8 +1070,34 @@ async function exportBackup() {
     vinos,
     slots,
   };
-  const json = JSON.stringify(envelope, null, 2);
+  return JSON.stringify(envelope, null, 2);
+}
 
+/** "Guardar cambios": a GitHub si está configurado; si no, a archivo local. */
+async function exportBackup() {
+  const json = await buildBackupJson();
+
+  const cfg = getGithubConfig();
+  if (cfg) {
+    try {
+      await uploadBackupToGithub(cfg, json);
+      setDirty(false);
+      toast('Respaldo subido a GitHub');
+    } catch (err) {
+      console.error(err);
+      const msg = err instanceof TypeError
+        ? 'No se pudo conectar con GitHub. Revisá tu conexión.'
+        : `No se pudo subir el respaldo. ${err.message || ''}`;
+      toast(msg.trim(), { error: true });
+    }
+    return; // configurado: nunca caer a descargas (justo lo que se quiere evitar)
+  }
+
+  exportToFile(json);
+}
+
+/** Exporta a archivo local (fallback sin sincronización, o manual desde ⚙). */
+async function exportToFile(json) {
   // En iPad, la hoja de compartir ofrece "Guardar en Archivos" (iCloud Drive)
   // y funciona también instalada como PWA, donde la descarga por <a> es frágil.
   if ('ontouchend' in document && navigator.canShare) {
@@ -964,15 +1164,8 @@ function validateBackup(data) {
   return null;
 }
 
-async function importBackup(file) {
-  let data;
-  try {
-    data = JSON.parse(await file.text());
-  } catch (err) {
-    toast('El archivo no es un JSON válido. No se modificó nada.', { error: true });
-    return;
-  }
-
+/** Valida, confirma y reemplaza TODO el contenido (común a archivo y GitHub). */
+async function importData(data, origen) {
   const error = validateBackup(data);
   if (error) {
     toast(`${error} No se modificó nada.`, { error: true });
@@ -1007,12 +1200,51 @@ async function importBackup(file) {
     await loadAll();
     refreshAllSlotEls();
     populateFilterOptions();
+    populateMapFilterOptions();
     renderVinos();
-    setDirty(false); // los datos quedan iguales a un archivo ya guardado
-    toast('Respaldo importado');
+    setDirty(false); // los datos quedan iguales a un respaldo ya guardado
+    toast(origen === 'github' ? 'Respaldo restaurado desde GitHub' : 'Respaldo importado');
   } catch (err) {
     console.error(err);
     toast('No se pudo importar el respaldo. Tus datos anteriores quedaron intactos.', { error: true });
+  }
+}
+
+async function importBackup(file) {
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+  } catch (err) {
+    toast('El archivo no es un JSON válido. No se modificó nada.', { error: true });
+    return;
+  }
+  await importData(data, 'archivo');
+}
+
+async function restoreFromGithub() {
+  const cfg = getGithubConfig();
+  if (!cfg) {
+    toast('Primero configurá la sincronización con GitHub.', { error: true });
+    return;
+  }
+  try {
+    const res = await ghContents(cfg, 'GET');
+    if (res.status === 404) {
+      toast('Todavía no hay ningún respaldo en el repositorio.', { error: true });
+      return;
+    }
+    if (!res.ok) {
+      toast(`No se pudo leer el respaldo. ${ghErrorMsg(res.status)}`, { error: true });
+      return;
+    }
+    const data = JSON.parse(b64DecodeUtf8((await res.json()).content));
+    await importData(data, 'github');
+  } catch (err) {
+    console.error(err);
+    const msg = err instanceof TypeError
+      ? 'No se pudo conectar con GitHub. Revisá tu conexión.'
+      : 'No se pudo leer el respaldo de GitHub.';
+    toast(msg, { error: true });
   }
 }
 
@@ -1026,10 +1258,87 @@ function wireBackup() {
     });
   });
 
+  // ⚙ Configuración: sincronización con GitHub + respaldo manual.
+  const dlg = $('#dlg-config');
+
+  $('#btn-config').addEventListener('click', () => {
+    // Prefill con lo guardado (el token incluido: es local a este dispositivo).
+    const cfg = getGithubConfig();
+    $('#gh-repo').value = cfg ? cfg.repo : '';
+    $('#gh-branch').value = cfg ? cfg.branch : 'main';
+    $('#gh-path').value = cfg ? cfg.path : BACKUP_FILENAME;
+    $('#gh-token').value = cfg ? cfg.token : '';
+    openDialog(dlg);
+  });
+
+  $('#form-config').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const repo = $('#gh-repo').value.trim();
+    const token = $('#gh-token').value.trim();
+    if (!repo && !token) {
+      setGithubConfig(null); // vaciar los dos campos clave = desactivar
+      dlg.close();
+      toast('Sincronización desactivada: «Guardar cambios» vuelve a exportar archivos');
+      return;
+    }
+    if (!repo || !token) {
+      toast('Completá repositorio y token (o vaciá los dos para desactivar).', { error: true });
+      return;
+    }
+    if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) {
+      toast('El repositorio va como usuario/repo.', { error: true });
+      return;
+    }
+    const cfg = {
+      repo,
+      branch: $('#gh-branch').value.trim() || 'main',
+      path: $('#gh-path').value.trim() || BACKUP_FILENAME,
+      token,
+    };
+    if (!setGithubConfig(cfg)) {
+      toast('No se pudo guardar la configuración (¿navegación privada?).', { error: true });
+      return;
+    }
+    dlg.close();
+    toast('Configuración guardada');
+  });
+
+  $('#btn-gh-test').addEventListener('click', async () => {
+    const repo = $('#gh-repo').value.trim();
+    const token = $('#gh-token').value.trim();
+    if (!repo || !token) {
+      toast('Completá repositorio y token.', { error: true });
+      return;
+    }
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repo}`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
+      });
+      if (res.ok) toast('Conexión OK: el token ve el repositorio');
+      else toast(ghErrorMsg(res.status), { error: true });
+    } catch (_) {
+      toast('No se pudo conectar con GitHub. Revisá tu conexión.', { error: true });
+    }
+  });
+
+  $('#btn-gh-restore').addEventListener('click', () => {
+    dlg.close();
+    restoreFromGithub();
+  });
+
+  $('#btn-file-export').addEventListener('click', () => {
+    dlg.close();
+    buildBackupJson().then(exportToFile).catch((err) => {
+      console.error(err);
+      toast('No se pudo exportar el respaldo.', { error: true });
+    });
+  });
+
   const fileInput = $('#file-import');
-  $('#btn-import').addEventListener('click', () => fileInput.click());
+  $('#btn-file-import').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files && fileInput.files[0];
+    dlg.close();
     try {
       if (file) await importBackup(file);
     } finally {
@@ -1152,12 +1461,14 @@ function toast(message, opts) {
 
   buildMaps();
   refreshAllSlotEls();
-  wireMapPager();
+  wireMapTabs();
+  wireMapFilters();
   wireSlotDialog();
   wireVinosView();
   wireVinoForm();
   wireBackup();
   populateFilterOptions();
+  populateMapFilterOptions();
   renderVinos();
 
   wireRouter();

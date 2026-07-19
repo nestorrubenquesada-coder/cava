@@ -47,9 +47,14 @@
     <button id="btn-vinos" class="btn" type="button"><span class="lbl-full">Catálogo de Vinos</span><span class="lbl-compact">Vinos</span></button>
 
     <div class="header-actions">
-      <button id="btn-import" class="btn" type="button"><span class="lbl-full">Importar respaldo</span><span class="lbl-compact">Importar</span></button>
-      <input id="file-import" type="file" accept="application/json,.json" hidden>
       <button id="btn-export" class="btn btn--primary" type="button" hidden><span class="lbl-full">Guardar cambios</span><span class="lbl-compact">Guardar</span></button>
+      <button id="btn-config" class="btn btn--icon" type="button" aria-label="Configuración" title="Configuración">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M1.75 4.25h5.5M12.75 4.25h1.5M1.75 11.75h1.5M8.75 11.75h5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="10" cy="4.25" r="2.1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="6" cy="11.75" r="2.1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </button>
       <button id="btn-theme" class="btn btn--icon" type="button" aria-label="Cambiar tema">
         <svg id="theme-icon-auto" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
           <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
@@ -69,6 +74,19 @@
   <main>
     <!-- ===== Sección Cava: el mapa ===== -->
     <section id="view-cava" class="view">
+      <!-- Subheader del mapa: búsqueda y filtros que atenúan en el mapa los
+           huecos cuyo vino no coincide (app.js §8). -->
+      <div class="map-subheader">
+        <div class="map-filters">
+          <input type="search" id="mf-q" placeholder="Buscar vino…" autocomplete="off" aria-label="Buscar vino en el mapa">
+          <select id="mf-varietal" aria-label="Filtrar mapa por varietal">
+            <option value="">Varietal</option>
+          </select>
+          <select id="mf-anio" aria-label="Filtrar mapa por año">
+            <option value="">Año</option>
+          </select>
+        </div>
+      </div>
       <div class="map-area">
         <div class="map-panel">
           <div class="map-grid" id="map-t1"></div>
@@ -77,16 +95,11 @@
           <div class="map-grid" id="map-t2"></div>
         </div>
       </div>
-      <button id="map-prev" class="map-arrow map-arrow--prev" type="button" aria-label="Sección anterior" hidden>
-        <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-      <button id="map-next" class="map-arrow map-arrow--next" type="button" aria-label="Sección siguiente">
-        <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
+      <!-- Selector flotante de sección (los ids los consume app.js §8). -->
+      <nav class="map-switch" aria-label="Secciones de la cava">
+        <button id="tab-t1" class="map-switch-btn" type="button" aria-current="true">Principal</button>
+        <button id="tab-t2" class="map-switch-btn" type="button">Secundaria</button>
+      </nav>
     </section>
 
     <!-- ===== Sección Vinos: el catálogo ===== -->
@@ -185,6 +198,55 @@
           <button type="submit" class="btn btn--primary">Guardar</button>
         </div>
       </form>
+    </div>
+  </dialog>
+
+  <!-- ===== Diálogo: configuración (sincronización con GitHub + respaldo manual) ===== -->
+  <dialog id="dlg-config">
+    <div class="dlg-body">
+      <div class="dlg-head">
+        <h2>Configuración</h2>
+        <button class="btn btn--icon" type="button" data-close aria-label="Cerrar">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <p class="dlg-sub">Con la sincronización activa, «Guardar cambios» sobreescribe siempre el mismo archivo del repositorio — sin descargas.</p>
+
+      <form id="form-config">
+        <div class="field">
+          <label for="gh-repo">Repositorio (usuario/repo)</label>
+          <input type="text" id="gh-repo" placeholder="usuario/cava-datos" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="gh-branch">Rama</label>
+            <input type="text" id="gh-branch" value="main" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="gh-path">Archivo</label>
+            <input type="text" id="gh-path" value="vinos-backup.json" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="field">
+          <label for="gh-token">Token</label>
+          <input type="password" id="gh-token" autocomplete="off">
+        </div>
+        <p class="cfg-note">Usá un repo <strong>privado</strong> y un token <em>fine-grained</em> (GitHub → Settings → Developer settings) con acceso solo a ese repo y permiso «Contents: Read and write». El token queda guardado únicamente en este dispositivo. Para desactivar la sincronización, vaciá repositorio y token, y guardá.</p>
+        <div class="dlg-actions">
+          <button id="btn-gh-test" class="btn" type="button">Probar conexión</button>
+          <button class="btn btn--primary" type="submit">Guardar</button>
+        </div>
+      </form>
+
+      <div class="cfg-manual">
+        <h3>Restaurar / respaldo manual</h3>
+        <div class="dlg-actions">
+          <button id="btn-gh-restore" class="btn" type="button">Restaurar desde GitHub</button>
+          <button id="btn-file-export" class="btn" type="button">Exportar a archivo</button>
+          <button id="btn-file-import" class="btn" type="button">Importar desde archivo</button>
+          <input id="file-import" type="file" accept="application/json,.json" hidden>
+        </div>
+      </div>
     </div>
   </dialog>
 

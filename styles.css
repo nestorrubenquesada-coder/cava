@@ -210,8 +210,8 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 /* ---------- 7. Mapa ----------
    Las dos secciones (t1 y t2) viven lado a lado en un carrusel horizontal
    con scroll-snap: cada panel es una "página" del ancho exacto del área
-   del mapa; se pasa de una a otra con swipe o con las flechas flotantes
-   (.map-arrow, las maneja app.js §8).
+   del mapa; se pasa de una a otra con swipe o con el selector flotante
+   (§7b, lo maneja app.js §8).
 
    Geometría: cada hueco es un CUADRADO exacto de lado --slot, el mismo
    en ambas secciones. Los módulos se dimensionan por contenido (tracks
@@ -231,9 +231,10 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
    Donde ni así entra (iPhone: 24 columnas de huecos no caben en < 700px a
    tamaño usable), §12 pasa el área a "modo paneo": cada panel toma el
    tamaño de su contenido, sin snap, y --slot-min sube para que el hueco
-   siga siendo tocable; las flechas saltan por offset real del panel
+   siga siendo tocable; el selector salta por offset real del panel
    (app.js §8). El breakpoint de §12 garantiza que en modo ancho el clamp
-   nunca toque su mínimo: la sección siempre entra completa.               */
+   nunca toque su mínimo: la sección siempre entra completa (la cuenta
+   descuenta header ~48px y subheader ~46px del alto de la ventana).       */
 .map-area {
   --gap: 9px; /* barras internas del mueble = grosor visible del marco */
   --slot-min: 22px;
@@ -272,33 +273,66 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   justify-content: center;
 }
 
-/* Flechas flotantes para pasar de sección (app.js alterna cuál se ve). */
-#view-cava { position: relative; }
-.map-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
+/* ---------- 7b. Subheader del mapa: búsqueda + filtros ----------
+   Atenúan en el mapa los huecos cuyo vino no coincide (.slot--dim, ver §7c
+   y app.js §8). Una sola línea: ~46px (50px en touch). */
+.map-subheader {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
+  padding: 6px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.map-filters {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+.map-filters input[type="search"] { flex: 1; min-width: 140px; max-width: 340px; }
+
+/* Selector flotante de sección: píldora segmentada centrada sobre el borde
+   inferior del mapa. El segmento activo usa un anillo inset (no un borde)
+   para que el ancho no salte al cambiar de sección. */
+#view-cava { position: relative; }
+.map-switch {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 50%;
-  color: var(--fg);
-  cursor: pointer;
+  border-radius: 999px;
   box-shadow: var(--shadow-lg);
+}
+.map-switch-btn {
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  min-height: 36px;
+  padding: 5px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-@media (hover: hover) {
-  .map-arrow:hover { background: var(--surface-hover); }
+.map-switch-btn[aria-current="true"] {
+  background: var(--bg);
+  color: var(--fg);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--border);
 }
-.map-arrow--prev { left: 10px; }
-.map-arrow--next { right: 10px; }
+@media (hover: hover) {
+  .map-switch-btn:not([aria-current="true"]):hover { color: var(--fg); }
+}
 
 /* El "mueble": el fondo metálico asoma por los gaps como las barras
    internas de la estructura, y el padding es el marco exterior. */
@@ -366,13 +400,18 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   font-weight: 600;
   line-height: 1;
   color: transparent;
-  transition: transform 0.06s ease;
+  transition: transform 0.06s ease, opacity 0.12s ease;
 }
 .slot.filled .slot-v {
   background: var(--ok-bg);
   border-color: var(--ok-border);
   color: var(--ok-fg);
 }
+/* §7c — Filtro del mapa activo: los huecos cuyo vino no coincide (y los
+   vacíos) se atenúan para que los matches salten a la vista. La clase va
+   en el botón y el efecto en el visual: área táctil, focus y aria quedan
+   intactos. */
+.slot--dim .slot-v { opacity: 0.25; }
 .slot:active .slot-v { transform: scale(0.88); }
 
 /* ---------- 8. Vista Vinos ---------- */
@@ -536,11 +575,23 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
   gap: 10px;
 }
 
+/* Diálogo de configuración (⚙): nota de ayuda y sección de respaldo manual. */
+.cfg-note { color: var(--muted); font-size: 12.5px; margin: 0 0 4px; }
+.cfg-manual {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.cfg-manual h3 { margin: 0 0 10px; font-size: 13px; }
+.cfg-manual .dlg-actions { justify-content: flex-start; margin-top: 0; }
+
 /* ---------- 11. Toast ---------- */
 .toast {
   position: fixed;
   left: 50%;
-  bottom: max(20px, env(safe-area-inset-bottom));
+  /* Por encima del selector flotante del mapa (§7b), que vive centrado
+     abajo: si no, el toast lo taparía a medias. */
+  bottom: calc(68px + env(safe-area-inset-bottom));
   transform: translateX(-50%) translateY(8px);
   max-width: min(90vw, 480px);
   padding: 8px 16px;
@@ -562,8 +613,10 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
    Por debajo, el mapa pasa al "modo paneo" descripto en §7: los paneles
    toman el tamaño de su contenido y se panea dentro de la sección. El snap
    obligatorio se apaga porque con páginas más anchas que el viewport pelea
-   contra el paneo (el scroll rebota a los bordes de página). */
-@media (max-width: 700px), (max-height: 500px) {
+   contra el paneo (el scroll rebota a los bordes de página). El piso de
+   alto es 540px: el modo ancho necesita cqh ≥ 14·22+99 = 407px y el área
+   pierde header (~48px) + subheader (~46px) respecto de la ventana. */
+@media (max-width: 700px), (max-height: 540px) {
   .map-area {
     --slot-min: 30px; /* piso táctil: en modo paneo no hace falta que entre */
     scroll-snap-type: none;
@@ -585,10 +638,13 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
 }
 
 /* Filtros del catálogo: los selects reparten el ancho del renglón en vez
-   de apilarse de a uno, y la acción primaria ocupa el renglón completo. */
+   de apilarse de a uno, y la acción primaria ocupa el renglón completo.
+   Subheader del mapa: los tres controles reparten el único renglón. */
 @media (max-width: 700px) {
   .toolbar select { flex: 1; min-width: 140px; }
   #btn-add-vino { flex: 1; }
+  .map-filters input[type="search"] { max-width: none; min-width: 110px; }
+  .map-filters select { flex: 1; min-width: 0; }
 }
 
 /* Touch: áreas táctiles más generosas e inputs de 16px — con menos, iOS
@@ -596,6 +652,7 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
 @media (pointer: coarse) {
   .btn { min-height: 38px; }
   .btn--sm { min-height: 34px; }
+  .map-switch-btn { min-height: 40px; }
   input[type="search"], input[type="text"], input[type="number"], input[type="date"], select {
     min-height: 38px;
     font-size: 16px;
