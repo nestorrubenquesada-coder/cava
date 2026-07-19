@@ -2,7 +2,8 @@
 /* ============================================================================
    Cava — mapa visual de la cava de vinos
    Vanilla JS, sin dependencias. Persistencia en IndexedDB (localStorage solo
-   para la preferencia de tema y el flag de cambios sin respaldar).
+   guarda la preferencia de tema, el flag de cambios sin respaldar y la
+   configuración de sincronización con GitHub).
    Ver README.md para publicar y respaldar.
    ============================================================================ */
 
@@ -45,6 +46,7 @@ const DB_VERSION = 1;
 const THEME_KEY = 'cava-theme';
 const DIRTY_KEY = 'cava-dirty'; // hay cambios sin respaldar (ver §12)
 const GITHUB_KEY = 'cava-github'; // config de sincronización con GitHub (ver §12)
+const SYNC_SHA_KEY = 'cava-sync-sha'; // sha del último respaldo remoto sincronizado (ver §12)
 const BACKUP_SCHEMA_VERSION = 1;
 const BACKUP_FILENAME = 'vinos-backup.json'; // nombre fijo: se reemplaza siempre el mismo archivo (ver §12)
 const SLOT_ID_RE = /^t([12])-m(\d{2})-(\d{2})-s(\d{2})-(\d{2})$/;
@@ -945,6 +947,13 @@ function wireVinoForm() {
    desde GitHub» lo baja. Sin configurar, quedan los flujos a archivo local:
    hoja de compartir (iPad) o descarga clásica, con nombre BACKUP_FILENAME.
 
+   Sincronización al abrir (syncFromGithub): SYNC_SHA_KEY guarda el sha del
+   último respaldo remoto que ESTE dispositivo vio. Al arrancar, si el sha
+   remoto cambió (otro dispositivo subió una versión más nueva), se carga
+   automáticamente; si además acá hay cambios sin subir, se pregunta cuál
+   conservar. El mismo sha protege "Guardar cambios": si el remoto avanzó
+   sin que este dispositivo lo viera, avisa antes de pisarlo.
+
    Importar/restaurar reemplaza TODO el contenido en una sola transacción:
    si algo falla, IndexedDB revierte también los clear() y no se pierde nada.
 
@@ -995,6 +1004,18 @@ function setGithubConfig(cfg) {
   } catch (_) { return false; }
 }
 
+/* Sha del último respaldo remoto visto por ESTE dispositivo (ver comentario §12). */
+function getSyncSha() {
+  try { return localStorage.getItem(SYNC_SHA_KEY); } catch (_) { return null; }
+}
+
+function setSyncSha(sha) {
+  try {
+    if (sha) localStorage.setItem(SYNC_SHA_KEY, sha);
+    else localStorage.removeItem(SYNC_SHA_KEY);
+  } catch (_) { /* modo privado: a lo sumo se re-pregunta al abrir */ }
+}
+
 /** btoa/atob solo manejan latin-1: pasar por bytes UTF-8 (acentos: "Semillón"). */
 function b64EncodeUtf8(str) {
   const bytes = new TextEncoder().encode(str);
@@ -1034,27 +1055,32 @@ function ghErrorMsg(status) {
   return `GitHub respondió ${status}.`;
 }
 
-/** Sube el respaldo sobreescribiendo SIEMPRE el mismo archivo del repo. */
-async function uploadBackupToGithub(cfg, json) {
-  const getSha = async () => {
-    const res = await ghContents(cfg, 'GET');
-    if (res.status === 404) return null; // primera vez: el archivo no existe todavía
-    if (!res.ok) throw new Error(ghErrorMsg(res.status));
-    return (await res.json()).sha;
-  };
-  const put = (sha) => ghContents(cfg, 'PUT', {
+/** GET del archivo de respaldo: { sha, body }; ambos null si no existe aún. */
+async function ghGetBackupMeta(cfg) {
+  const res = await ghContents(cfg, 'GET');
+  if (res.status === 404) return { sha: null, body: null };
+  if (!res.ok) throw new Error(ghErrorMsg(res.status));
+  const body = await res.json();
+  return { sha: body.sha, body };
+}
+
+/** PUT del respaldo sobre el MISMO archivo del repo. Devuelve el sha nuevo. */
+async function ghPutBackup(cfg, json, sha) {
+  const put = (s) => ghContents(cfg, 'PUT', {
     message: `Respaldo de cava — ${new Date().toLocaleString('es-AR')}`,
     content: b64EncodeUtf8(json),
     branch: cfg.branch,
-    ...(sha ? { sha } : {}),
+    ...(s ? { sha: s } : {}),
   });
 
-  let res = await put(await getSha());
+  let res = await put(sha);
   if (res.status === 409 || res.status === 422) {
-    // Otro dispositivo guardó en el medio (sha viejo): reintentar UNA vez.
-    res = await put(await getSha());
+    // Otro dispositivo guardó justo en el medio (sha viejo): reintentar UNA vez.
+    res = await put((await ghGetBackupMeta(cfg)).sha);
   }
   if (!res.ok) throw new Error(ghErrorMsg(res.status));
+  const out = await res.json();
+  return out.content ? out.content.sha : null;
 }
 
 /* --- Exportar --- */
@@ -1080,7 +1106,17 @@ async function exportBackup() {
   const cfg = getGithubConfig();
   if (cfg) {
     try {
-      await uploadBackupToGithub(cfg, json);
+      const { sha } = await ghGetBackupMeta(cfg);
+      // El remoto avanzó desde la última vez que este dispositivo lo vio
+      // (otro dispositivo guardó y acá no se recargó): avisar antes de pisar.
+      if (sha && getSyncSha() && sha !== getSyncSha()) {
+        const ok = await confirmDialog(
+          'Otro dispositivo subió un respaldo más nuevo que el que se ve acá. ¿Sobrescribirlo con los datos de este dispositivo?',
+          { confirmLabel: 'Sobrescribir', danger: true }
+        );
+        if (!ok) return;
+      }
+      setSyncSha(await ghPutBackup(cfg, json, sha));
       setDirty(false);
       toast('Respaldo subido a GitHub');
     } catch (err) {
@@ -1164,19 +1200,24 @@ function validateBackup(data) {
   return null;
 }
 
-/** Valida, confirma y reemplaza TODO el contenido (común a archivo y GitHub). */
+/** Valida y reemplaza TODO el contenido (común a archivo y GitHub).
+    Con origen 'github-auto' (sincronización al abrir) no pide confirmación:
+    o no hacía falta, o el llamador ya la pidió. Devuelve true si importó. */
 async function importData(data, origen) {
   const error = validateBackup(data);
   if (error) {
-    toast(`${error} No se modificó nada.`, { error: true });
-    return;
+    if (origen === 'github-auto') console.warn('Cava: respaldo remoto inválido, se ignora:', error);
+    else toast(`${error} No se modificó nada.`, { error: true });
+    return false;
   }
 
-  const ok = await confirmDialog(
-    `Se importarán ${data.vinos.length} vino${data.vinos.length === 1 ? '' : 's'} y ${data.slots.length} posiciones. Esto sobrescribe tu cava actual por completo. ¿Seguro?`,
-    { confirmLabel: 'Importar y sobrescribir', danger: true }
-  );
-  if (!ok) return;
+  if (origen !== 'github-auto') {
+    const ok = await confirmDialog(
+      `Se importarán ${data.vinos.length} vino${data.vinos.length === 1 ? '' : 's'} y ${data.slots.length} posiciones. Esto sobrescribe tu cava actual por completo. ¿Seguro?`,
+      { confirmLabel: 'Importar y sobrescribir', danger: true }
+    );
+    if (!ok) return false;
+  }
 
   try {
     // Reemplazo atómico: clear + puts en una sola transacción.
@@ -1203,10 +1244,14 @@ async function importData(data, origen) {
     populateMapFilterOptions();
     renderVinos();
     setDirty(false); // los datos quedan iguales a un respaldo ya guardado
-    toast(origen === 'github' ? 'Respaldo restaurado desde GitHub' : 'Respaldo importado');
+    toast(origen === 'archivo' ? 'Respaldo importado'
+      : origen === 'github' ? 'Respaldo restaurado desde GitHub'
+      : 'Datos actualizados desde GitHub');
+    return true;
   } catch (err) {
     console.error(err);
     toast('No se pudo importar el respaldo. Tus datos anteriores quedaron intactos.', { error: true });
+    return false;
   }
 }
 
@@ -1218,7 +1263,9 @@ async function importBackup(file) {
     toast('El archivo no es un JSON válido. No se modificó nada.', { error: true });
     return;
   }
-  await importData(data, 'archivo');
+  const ok = await importData(data, 'archivo');
+  // Lo importado de un archivo no está en GitHub: queda pendiente de subir.
+  if (ok && getGithubConfig()) setDirty(true);
 }
 
 async function restoreFromGithub() {
@@ -1228,24 +1275,57 @@ async function restoreFromGithub() {
     return;
   }
   try {
-    const res = await ghContents(cfg, 'GET');
-    if (res.status === 404) {
+    const { sha, body } = await ghGetBackupMeta(cfg);
+    if (!body) {
       toast('Todavía no hay ningún respaldo en el repositorio.', { error: true });
       return;
     }
-    if (!res.ok) {
-      toast(`No se pudo leer el respaldo. ${ghErrorMsg(res.status)}`, { error: true });
-      return;
-    }
-    const data = JSON.parse(b64DecodeUtf8((await res.json()).content));
-    await importData(data, 'github');
+    const data = JSON.parse(b64DecodeUtf8(body.content));
+    if (await importData(data, 'github')) setSyncSha(sha);
   } catch (err) {
     console.error(err);
     const msg = err instanceof TypeError
       ? 'No se pudo conectar con GitHub. Revisá tu conexión.'
-      : 'No se pudo leer el respaldo de GitHub.';
-    toast(msg, { error: true });
+      : `No se pudo leer el respaldo. ${err.message || ''}`;
+    toast(msg.trim(), { error: true });
   }
+}
+
+/**
+ * Sincronización al abrir la app: si otro dispositivo subió un respaldo más
+ * nuevo (sha remoto ≠ último sha visto acá), se carga automáticamente; con
+ * cambios locales sin subir, se pregunta cuál conservar. Sin config o sin
+ * conexión no hace nada: la app sigue con los datos locales.
+ */
+async function syncFromGithub() {
+  const cfg = getGithubConfig();
+  if (!cfg) return;
+  let meta;
+  try {
+    meta = await ghGetBackupMeta(cfg);
+  } catch (err) {
+    // Sin conexión: silencioso. Error de la API (token vencido, etc.): avisar.
+    if (!(err instanceof TypeError)) toast(err.message, { error: true });
+    return;
+  }
+  if (!meta.body || meta.sha === getSyncSha()) return; // sin respaldo remoto, o ya al día
+
+  let data;
+  try {
+    data = JSON.parse(b64DecodeUtf8(meta.body.content));
+  } catch (_) {
+    console.warn('Cava: el respaldo remoto no es un JSON válido; se ignora.');
+    return;
+  }
+
+  if (isDirty()) {
+    const ok = await confirmDialog(
+      'Hay una versión más nueva del respaldo en GitHub, pero este dispositivo tiene cambios sin subir. ¿Traer la de GitHub y descartar lo de acá? (Cancelar: conservás lo local y podés subirlo con «Guardar cambios».)',
+      { confirmLabel: 'Traer versión de GitHub', danger: true }
+    );
+    if (!ok) return;
+  }
+  if (await importData(data, 'github-auto')) setSyncSha(meta.sha);
 }
 
 function wireBackup() {
@@ -1472,6 +1552,11 @@ function toast(message, opts) {
   renderVinos();
 
   wireRouter();
+
+  // Sincronización al abrir: si otro dispositivo subió un respaldo más nuevo,
+  // se carga acá (con pregunta solo si hay cambios locales sin subir). Corre
+  // en segundo plano: la app ya está usable con los datos locales.
+  syncFromGithub().catch((err) => console.error(err));
 
   // Pedir persistencia de almacenamiento (reduce el riesgo de que Safari
   // desaloje IndexedDB). Best-effort: si falla, no pasa nada.

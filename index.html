@@ -7,8 +7,9 @@
   <meta name="description" content="Mapa visual de tu cava de vinos: dónde está cada botella.">
 
   <!-- Aplica el tema guardado antes de cargar el CSS para evitar el "flash" de tema incorrecto.
-       localStorage solo guarda esta preferencia y el flag de cambios sin
-       respaldar; los datos viven en IndexedDB. -->
+       localStorage solo guarda esta preferencia, el flag de cambios sin
+       respaldar y la config de sincronización con GitHub; los datos viven
+       en IndexedDB. -->
   <script>
     try {
       document.documentElement.dataset.theme = localStorage.getItem('cava-theme') || 'auto';

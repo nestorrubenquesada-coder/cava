@@ -61,8 +61,9 @@ Los datos vivos están en IndexedDB del navegador; el respaldo es un JSON que, c
 
 ### Uso
 
-- **Guardar cambios**: aparece en el header (en verde) solo cuando hay cambios sin respaldar; sube el respaldo y desaparece hasta el próximo cambio. Si falla (sin red, token vencido), avisa y el botón se queda.
-- **⚙ → Restaurar desde GitHub**: baja el respaldo, valida, pide confirmación y **reemplaza por completo** los datos locales. Es el camino para pasar datos entre dispositivos.
+- **Al abrir la app**: chequea GitHub en segundo plano y, si otro dispositivo subió una versión más nueva, **la carga sola** (toast «Datos actualizados desde GitHub»). Si además este dispositivo tiene cambios sin subir, pregunta cuál conservar. Sin conexión no pasa nada: la app sigue con los datos locales.
+- **Guardar cambios**: aparece en el header (en verde) solo cuando hay cambios sin respaldar; sube el respaldo y desaparece hasta el próximo cambio. Si el remoto avanzó sin que este dispositivo lo viera, avisa antes de pisarlo. Si falla (sin red, token vencido), avisa y el botón se queda.
+- **⚙ → Restaurar desde GitHub**: fuerza la bajada manual del respaldo (valida, pide confirmación y **reemplaza por completo** los datos locales). Con la sincronización al abrir casi nunca hace falta.
 - **⚙ → Exportar/Importar archivo**: fallback manual a JSON local (`vinos-backup.json`), útil sin conexión o sin configurar la sincronización. Sin configurar, «Guardar cambios» usa este flujo (hoja de compartir en iPad, descarga en escritorio).
 
 ## Ajustar la estructura de la cava
