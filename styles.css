@@ -29,6 +29,9 @@
   --tab-underline: #fd8c73; /* el subrayado coral de las tabs de un repo de GitHub */
   --focus: #0969da;
   --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.2);
+  /* Estructura metálica del mueble: negra en ambos temas, pero en dark
+     necesita ser más profunda que --surface para que las barras se lean. */
+  --metal: #17191d;
 }
 
 [data-theme="dark"] {
@@ -52,6 +55,7 @@
   --tab-underline: #fd8c73;
   --focus: #2f81f7;
   --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.85);
+  --metal: #08090b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -76,6 +80,7 @@
     --tab-underline: #fd8c73;
     --focus: #2f81f7;
     --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.85);
+    --metal: #08090b;
   }
 }
 
@@ -196,13 +201,14 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
    de container query para que la sección más exigente entre completa en
    una página; si no da, actúa el mínimo del clamp y el área scrollea.
    "Chrome" de un módulo = 3px padding + 1px borde por lado = 8px.
+   Marco del mueble = 8px padding + 1px borde por lado = 18px por eje.
    El padding de página (10px 12px 12px) vive en .map-panel — el área en
    sí no tiene padding para que cada página mida exactamente 100cqw.
    Restricciones con gap = 6px (s = lado del cuadrado):
-   - Secc 1 ancho: 24px + 6 mód × (4s + 8) + 5·6      → s ≤ (100cqw − 102) / 24
-   - Secc 1 alto:  22px + 3 filas (3s + 8) + (5s + 8) + 3·6 → s ≤ (100cqh − 72) / 14
-   - Secc 2 ancho: 24px + 5 mód × (5s + 8) + 4·6      → s ≤ (100cqw − 88) / 25
-   - Secc 2 alto:  22px + 2 filas (3s + 8) + 6        → s ≤ (100cqh − 44) / 6   */
+   - Secc 1 ancho: 24+18px + 6 mód × (4s + 8) + 5·6      → s ≤ (100cqw − 120) / 24
+   - Secc 1 alto:  22+18px + 3 filas (3s + 8) + (5s + 8) + 3·6 → s ≤ (100cqh − 90) / 14
+   - Secc 2 ancho: 24+18px + 5 mód × (5s + 8) + 4·6      → s ≤ (100cqw − 106) / 25
+   - Secc 2 alto:  22+18px + 2 filas (3s + 8) + 6        → s ≤ (100cqh − 62) / 6   */
 .map-area {
   --gap: 6px;
   --slot: 34px; /* fallback si el navegador no soporta container queries */
@@ -221,10 +227,10 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .map-area {
     container-type: size;
     --slot: clamp(22px,
-                  min((100cqw - 102px) / 24,
-                      (100cqh - 72px) / 14,
-                      (100cqw - 88px) / 25,
-                      (100cqh - 44px) / 6),
+                  min((100cqw - 120px) / 24,
+                      (100cqh - 90px) / 14,
+                      (100cqw - 106px) / 25,
+                      (100cqh - 62px) / 6),
                   72px);
   }
 }
@@ -234,6 +240,10 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   height: 100%;
   padding: 10px 12px 12px;
   scroll-snap-align: start;
+  /* El mueble queda centrado en su página. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Flechas flotantes para pasar de sección (app.js alterna cuál se ve). */
@@ -262,22 +272,33 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .map-arrow--prev { left: 10px; }
 .map-arrow--next { right: 10px; }
 
-#map-t1 {
+/* El "mueble": el fondo metálico asoma por los gaps como las barras
+   internas de la estructura, y el padding es el marco exterior. */
+#map-t1, #map-t2 {
   display: grid;
+  gap: var(--gap);
+  background: var(--metal);
+  border: 1px solid #000;
+  border-radius: 2px; /* cantos rectos, apenas suavizados */
+  padding: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), var(--shadow-lg);
+}
+
+#map-t1 {
   grid-template-columns: repeat(6, max-content);
   grid-template-rows: repeat(4, max-content);
-  gap: var(--gap);
-  justify-content: center;
-  align-content: start;
 }
 
 #map-t2 {
-  display: grid;
   grid-template-columns: repeat(5, max-content);
   grid-template-rows: repeat(2, max-content);
-  gap: var(--gap);
-  justify-content: center;
-  align-content: start;
+  /* El tope del mueble 2 debe alinearse con el del mueble 1. Como el panel
+     centra verticalmente, se compensa la diferencia de alturas con margen
+     inferior (el centrado posiciona la caja de margen):
+     alto 1 = 3·(3s+8) + (5s+8) + 3·6 + 18 = 14s + 68
+     alto 2 = 2·(3s+8) + 6 + 18          =  6s + 40
+     diferencia = 8s + 28                                            */
+  margin-bottom: calc(8 * var(--slot) + 28px);
 }
 
 /* Módulo: la subcuadrícula interna (columnas/filas) la define app.js
@@ -291,7 +312,7 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   justify-content: center;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 2px; /* sharp, a tono con la estructura del mueble */
   padding: 3px;
   min-width: 0;
   min-height: 0;
