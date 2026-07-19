@@ -110,7 +110,10 @@ button { font: inherit; color: inherit; }
 
 .muted { color: var(--muted); }
 
-/* ---------- 3. Header ---------- */
+/* ---------- 3. Header ----------
+   Una sola barra: el botón "Volver" a la izquierda cuando se ve el
+   catálogo; acciones a la derecha. El router (app.js) alterna qué
+   se muestra.                                                        */
 .app-header {
   flex: none;
   display: flex;
@@ -122,32 +125,8 @@ button { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--border);
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding-right: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--fg);
-  text-decoration: none;
-}
-.brand svg { color: var(--primary); }
-
-.main-nav { display: flex; }
-.main-nav a {
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  color: var(--fg);
-  text-decoration: none;
-  border-top: 2px solid transparent;
-  border-bottom: 2px solid transparent;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.main-nav a.active { font-weight: 600; border-bottom-color: var(--tab-underline); }
-.main-nav a:not(.active):hover { border-bottom-color: var(--border); }
+/* Botones directos del header (p. ej. "Volver"): no se estiran. */
+.app-header > .btn { align-self: center; }
 
 .header-actions {
   margin-left: auto;
@@ -205,70 +184,88 @@ button { font: inherit; color: inherit; }
 main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
-/* ---------- 6. Tabs del mapa (estilo pestañas de repo) ---------- */
-.tabbar {
-  flex: none;
-  display: flex;
-  gap: 4px;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--border);
-}
-.tab {
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  padding: 10px 14px 8px;
-  font-size: 14px;
-  color: var(--fg);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.tab[aria-selected="true"] { font-weight: 600; border-bottom-color: var(--tab-underline); }
-.tab:not([aria-selected="true"]):hover { border-bottom-color: var(--border); }
-
 /* ---------- 7. Mapa ----------
+   Las dos secciones (t1 y t2) viven lado a lado en un carrusel horizontal
+   con scroll-snap: cada panel es una "página" del ancho exacto del área
+   del mapa; se pasa de una a otra con swipe o con las flechas flotantes
+   (.map-arrow, las maneja app.js §8).
+
    Geometría: cada hueco es un CUADRADO exacto de lado --slot, el mismo
-   en ambas tabs. Los módulos se dimensionan por contenido (tracks fijos
-   que setea app.js desde LAYOUT), y --slot se calcula con unidades de
-   container query para que la tab más exigente entre completa en el
-   área del mapa; si no da, actúa el mínimo del clamp y el área scrollea.
+   en ambas secciones. Los módulos se dimensionan por contenido (tracks
+   fijos que setea app.js desde LAYOUT), y --slot se calcula con unidades
+   de container query para que la sección más exigente entre completa en
+   una página; si no da, actúa el mínimo del clamp y el área scrollea.
    "Chrome" de un módulo = 3px padding + 1px borde por lado = 8px.
+   El padding de página (10px 12px 12px) vive en .map-panel — el área en
+   sí no tiene padding para que cada página mida exactamente 100cqw.
    Restricciones con gap = 6px (s = lado del cuadrado):
-   - Tab 1 ancho: 6 mód × (4s + 8) + 5·6      → s ≤ (100cqw − 78) / 24
-   - Tab 1 alto:  4 filas (3s + 8) + (5s + 8) + 4·6 → s ≤ (100cqh − 64) / 17
-   - Tab 2 ancho: 5 mód × (5s + 8) + 4·6      → s ≤ (100cqw − 64) / 25
-   - Tab 2 alto:  2 filas (3s + 8) + 6        → s ≤ (100cqh − 22) / 6   */
+   - Secc 1 ancho: 24px + 6 mód × (4s + 8) + 5·6      → s ≤ (100cqw − 102) / 24
+   - Secc 1 alto:  22px + 3 filas (3s + 8) + (5s + 8) + 3·6 → s ≤ (100cqh − 72) / 14
+   - Secc 2 ancho: 24px + 5 mód × (5s + 8) + 4·6      → s ≤ (100cqw − 88) / 25
+   - Secc 2 alto:  22px + 2 filas (3s + 8) + 6        → s ≤ (100cqh − 44) / 6   */
 .map-area {
   --gap: 6px;
   --slot: 34px; /* fallback si el navegador no soporta container queries */
   flex: 1;
   min-height: 0;
-  padding: 10px 12px 12px;
+  display: flex;
   overflow: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none; /* la navegación es swipe/flechas, sin barra */
   user-select: none;
   -webkit-user-select: none;
 }
+.map-area::-webkit-scrollbar { display: none; }
 
 @supports (container-type: size) {
   .map-area {
     container-type: size;
     --slot: clamp(22px,
-                  min((100cqw - 78px) / 24,
-                      (100cqh - 64px) / 17,
-                      (100cqw - 64px) / 25,
-                      (100cqh - 22px) / 6),
+                  min((100cqw - 102px) / 24,
+                      (100cqh - 72px) / 14,
+                      (100cqw - 88px) / 25,
+                      (100cqh - 44px) / 6),
                   72px);
   }
 }
 
-.map-panel { width: 100%; height: 100%; }
+.map-panel {
+  flex: 0 0 100%;
+  height: 100%;
+  padding: 10px 12px 12px;
+  scroll-snap-align: start;
+}
+
+/* Flechas flotantes para pasar de sección (app.js alterna cuál se ve). */
+#view-cava { position: relative; }
+.map-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--fg);
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.map-arrow:hover { background: var(--surface-hover); }
+.map-arrow--prev { left: 10px; }
+.map-arrow--next { right: 10px; }
 
 #map-t1 {
   display: grid;
   grid-template-columns: repeat(6, max-content);
-  grid-template-rows: repeat(5, max-content);
+  grid-template-rows: repeat(4, max-content);
   gap: var(--gap);
   justify-content: center;
   align-content: start;

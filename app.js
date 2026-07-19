@@ -2,7 +2,8 @@
 /* ============================================================================
    Cava — mapa visual de la cava de vinos
    Vanilla JS, sin dependencias. Persistencia en IndexedDB (localStorage solo
-   para la preferencia de tema). Ver README.md para publicar y respaldar.
+   para la preferencia de tema y el flag de cambios sin respaldar).
+   Ver README.md para publicar y respaldar.
    ============================================================================ */
 
 /* ============================================================================
@@ -15,9 +16,9 @@
    ============================================================================ */
 const LAYOUT = {
   tab1: {
-    modulos: { cols: 6, filas: 5 },
-    slotsPorModulo: { cols: 4, filas: 3 },      // filas 1–4
-    ultimaFila: { cols: 4, filas: 5 },          // fila 5 (los 6 módulos de abajo)
+    modulos: { cols: 6, filas: 4 },
+    slotsPorModulo: { cols: 4, filas: 3 },      // filas 1–3
+    ultimaFila: { cols: 4, filas: 5 },          // fila 4 (los 6 módulos de abajo)
   },
   tab2: {
     modulos: { cols: 4, filas: 2 },
@@ -36,6 +37,7 @@ const OTRO_VALUE = '__otro__'; // valor del <option> "Otro (texto libre)"
 const DB_NAME = 'cava';
 const DB_VERSION = 1;
 const THEME_KEY = 'cava-theme';
+const DIRTY_KEY = 'cava-dirty'; // hay cambios sin respaldar (ver §12)
 const BACKUP_SCHEMA_VERSION = 1;
 const SLOT_ID_RE = /^t([12])-m(\d{2})-(\d{2})-s(\d{2})-(\d{2})$/;
 
@@ -70,7 +72,7 @@ function fmtPrecio(n) {
        varietal y opcionales precioCompra, fechaCompra.
      - "slots": keyPath "id" (string derivado de la posición física, ver §4).
        Campos: vinoId (id de "vinos") o null si el hueco está vacío.
-   Sin índices: el dataset completo (≈560 slots + catálogo) se carga en
+   Sin índices: el dataset completo (≈490 slots + catálogo) se carga en
    memoria al arrancar y todo filtrado/conteo se hace ahí.
    ============================================================================ */
 
@@ -126,7 +128,7 @@ function withTx(db, storeNames, mode, fn) {
    Id de slot: "t{tab}-m{fila}-{col}-s{fila}-{col}", coordenadas 1-based con
    dos dígitos (p. ej. "t1-m05-02-s03-04"). El orden lexicográfico coincide
    con el orden físico. El módulo alto de la tab 2 es simplemente el módulo
-   (fila 1, columna 5) con filas internas 01–10: solo el render sabe que
+   (fila 1, columna 5) con filas internas 01–06: solo el render sabe que
    ocupa dos filas de la grilla.
    ============================================================================ */
 
@@ -205,6 +207,7 @@ const state = {
   currentSlotId: null,   // hueco abierto en el diálogo de posición
   pendingSlotId: null,   // hueco a asignar cuando se crea un vino desde el selector
   editingVinoId: null,   // vino en edición en el formulario (null = alta)
+  mapScrollLeft: 0,      // página del carrusel al salir del mapa (se restaura al volver)
   filters: { q: '', varietal: '', anio: '' },
 };
 
@@ -255,6 +258,7 @@ async function loadAll() {
 async function saveVino(vino) {
   await withTx(state.db, 'vinos', 'readwrite', (tx) => { tx.objectStore('vinos').put(vino); });
   state.vinos.set(vino.id, vino);
+  setDirty(true);
 }
 
 /** Borra un vino y vacía sus huecos en UNA transacción (todo o nada). */
@@ -270,6 +274,7 @@ async function deleteVino(vinoId) {
     state.slots.get(id).vinoId = null;
     updateSlotEl(id);
   }
+  setDirty(true);
   return slotIds.length;
 }
 
@@ -279,6 +284,7 @@ async function setSlotVino(slotId, vinoId) {
   if (slot) slot.vinoId = vinoId;
   updateSlotEl(slotId);
   renderVinos(); // refresca los contadores de ocupación del catálogo
+  setDirty(true);
 }
 
 /** Cuántos huecos ocupa cada vino: Map<vinoId, cantidad>. */
@@ -294,41 +300,38 @@ function occupancyMap() {
    7. ROUTER (hash)
    ============================================================================ */
 const ROUTES = {
-  '#/cava/principal': { view: 'cava', tab: 'principal' },
-  '#/cava/secundaria': { view: 'cava', tab: 'secundaria' },
+  '#/cava': { view: 'cava' },
   '#/vinos': { view: 'vinos' },
 };
 
 function applyRoute() {
   let hash = location.hash;
   if (!ROUTES[hash]) {
-    hash = '#/cava/principal';
+    // Cubre también los hashes viejos "#/cava/principal" y "#/cava/secundaria".
+    hash = '#/cava';
     history.replaceState(null, '', hash);
   }
-  const route = ROUTES[hash];
+  const enCava = ROUTES[hash].view === 'cava';
 
-  $('#view-cava').hidden = route.view !== 'cava';
-  $('#view-vinos').hidden = route.view !== 'vinos';
+  // Un elemento oculto pierde su scroll: guardar la página del carrusel al
+  // salir del mapa y restaurarla al volver.
+  const mapArea = $('.map-area');
+  const viewCava = $('#view-cava');
+  if (!viewCava.hidden && !enCava) state.mapScrollLeft = mapArea.scrollLeft;
 
-  document.querySelectorAll('.main-nav a').forEach((a) => {
-    a.classList.toggle('active', a.dataset.nav === route.view);
-  });
+  viewCava.hidden = !enCava;
+  $('#view-vinos').hidden = enCava;
 
-  if (route.view === 'cava') {
-    document.querySelectorAll('.tab').forEach((t) => {
-      t.setAttribute('aria-selected', String(t.dataset.tab === route.tab));
-    });
-    $('#map-t1').hidden = route.tab !== 'principal';
-    $('#map-t2').hidden = route.tab !== 'secundaria';
-  }
+  // Header único: "Catálogo de Vinos" en el mapa; "Volver" en el catálogo.
+  $('#btn-vinos').hidden = !enCava;
+  $('#btn-volver').hidden = enCava;
+
+  if (enCava) mapArea.scrollLeft = state.mapScrollLeft;
 }
 
 function wireRouter() {
-  // Las tabs del mapa son <button>: navegan seteando el hash.
-  $('.tabbar').addEventListener('click', (e) => {
-    const tab = e.target.closest('.tab');
-    if (tab) location.hash = '#/cava/' + tab.dataset.tab;
-  });
+  $('#btn-vinos').addEventListener('click', () => { location.hash = '#/vinos'; });
+  $('#btn-volver').addEventListener('click', () => { location.hash = '#/cava'; });
   window.addEventListener('hashchange', applyRoute);
   applyRoute();
 }
@@ -395,6 +398,27 @@ function updateSlotEl(slotId) {
 
 function refreshAllSlotEls() {
   for (const id of state.slotEls.keys()) updateSlotEl(id);
+}
+
+/* Carrusel: flechas para pasar de sección (el swipe táctil lo da scroll-snap
+   solo; acá solo se pagina con las flechas y se alterna cuál se muestra). */
+function wireMapPager() {
+  const area = $('.map-area');
+  const prev = $('#map-prev');
+  const next = $('#map-next');
+
+  const page = () => Math.round(area.scrollLeft / area.clientWidth);
+  const go = (dir) => area.scrollTo({ left: (page() + dir) * area.clientWidth, behavior: 'smooth' });
+  prev.addEventListener('click', () => go(-1));
+  next.addEventListener('click', () => go(1));
+
+  const update = () => {
+    const enSegunda = area.scrollLeft > area.clientWidth / 2;
+    prev.hidden = !enSegunda;
+    next.hidden = enSegunda;
+  };
+  area.addEventListener('scroll', update, { passive: true });
+  update();
 }
 
 /* ============================================================================
@@ -805,7 +829,29 @@ function wireVinoForm() {
    { app: "cava", schemaVersion: 1, exportedAt: ISO, vinos: [...], slots: [...] }
    Importar reemplaza TODO el contenido en una sola transacción: si algo
    falla, IndexedDB revierte también los clear() y no se pierde nada.
+
+   "Cambios sin respaldar": cada mutación (vino o posición) marca un flag
+   persistente en localStorage; mientras esté activo, aparece en el header
+   el botón verde "Guardar cambios" (que exporta el respaldo). Sin cambios
+   pendientes no hay botón. Exportar (o importar un respaldo, que deja los
+   datos iguales a un archivo guardado) lo limpia.
    ============================================================================ */
+
+function isDirty() {
+  try { return localStorage.getItem(DIRTY_KEY) === '1'; } catch (_) { return false; }
+}
+
+function setDirty(dirty) {
+  try {
+    if (dirty) localStorage.setItem(DIRTY_KEY, '1');
+    else localStorage.removeItem(DIRTY_KEY);
+  } catch (_) { /* modo privado: el botón solo refleja la sesión actual */ }
+  updateSaveBtn();
+}
+
+function updateSaveBtn() {
+  $('#btn-export').hidden = !isDirty();
+}
 
 async function exportBackup() {
   const [vinos, slots] = await withTx(state.db, ['vinos', 'slots'], 'readonly', (tx) =>
@@ -829,6 +875,7 @@ async function exportBackup() {
       const file = new File([json], filename, { type: 'application/json' });
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: filename });
+        setDirty(false);
         toast('Respaldo exportado');
         return;
       }
@@ -846,6 +893,7 @@ async function exportBackup() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+  setDirty(false);
   toast('Respaldo exportado');
 }
 
@@ -930,6 +978,7 @@ async function importBackup(file) {
     refreshAllSlotEls();
     populateFilterOptions();
     renderVinos();
+    setDirty(false); // los datos quedan iguales a un archivo ya guardado
     toast('Respaldo importado');
   } catch (err) {
     console.error(err);
@@ -938,6 +987,8 @@ async function importBackup(file) {
 }
 
 function wireBackup() {
+  updateSaveBtn(); // refleja el flag persistido de la sesión anterior
+
   $('#btn-export').addEventListener('click', () => {
     exportBackup().catch((err) => {
       console.error(err);
@@ -1071,6 +1122,7 @@ function toast(message, opts) {
 
   buildMaps();
   refreshAllSlotEls();
+  wireMapPager();
   wireSlotDialog();
   wireVinosView();
   wireVinoForm();

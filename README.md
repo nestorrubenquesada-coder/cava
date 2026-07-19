@@ -1,8 +1,8 @@
 # Cava
 
-Mapa visual de una cava física de vinos, pensada para usarse en un iPad en horizontal. Cada hueco del mapa es una posición real de la estantería y puede tener una botella elegida del catálogo de vinos.
+Mapa visual de una cava física de vinos, pensada para usarse en un iPad en horizontal. Cada hueco del mapa es una posición real de la estantería y puede tener una botella elegida del catálogo de vinos. Las dos secciones de la cava se ven lado a lado en un carrusel horizontal: se pasa de una a otra con swipe (o scroll horizontal) o con la flecha flotante del borde de la pantalla.
 
-100% estática: HTML/CSS/JS vanilla, sin backend, sin build, sin dependencias. Los datos viven en IndexedDB del navegador (localStorage solo guarda la preferencia de tema). Funciona offline y se instala como PWA.
+100% estática: HTML/CSS/JS vanilla, sin backend, sin build, sin dependencias. Los datos viven en IndexedDB del navegador (localStorage solo guarda la preferencia de tema y el flag de cambios sin respaldar). Funciona offline y se instala como PWA.
 
 ## Archivos
 
@@ -40,7 +40,7 @@ No sirve abrir `index.html` con doble click (`file://`): el service worker neces
 2. Botón **Compartir** → **Añadir a pantalla de inicio**.
 3. Abrila desde el ícono nuevo: pantalla completa, funciona sin conexión.
 
-> ⚠️ **La app instalada tiene su propia base de datos, separada de Safari.** Lo que cargues en Safari no aparece en la app instalada (ni al revés). Instalá primero y cargá los datos ahí — o migrá con *Exportar respaldo* en Safari e *Importar respaldo* en la app instalada.
+> ⚠️ **La app instalada tiene su propia base de datos, separada de Safari.** Lo que cargues en Safari no aparece en la app instalada (ni al revés). Instalá primero y cargá los datos ahí — o migrá con *Guardar cambios* en Safari (aparece cuando hay cambios sin respaldar) e *Importar respaldo* en la app instalada.
 
 Otras notas de iOS:
 
@@ -50,7 +50,7 @@ Otras notas de iOS:
 
 ## Respaldos (iCloud Drive)
 
-- **Exportar respaldo**: descarga un JSON con todo (catálogo + posiciones). En el iPad se abre la hoja de compartir → *Guardar en Archivos* → iCloud Drive.
+- **Guardar cambios**: aparece en el header (en verde) solo cuando hay cambios sin respaldar. Descarga un JSON con todo (catálogo + posiciones) y desaparece hasta el próximo cambio. En el iPad se abre la hoja de compartir → *Guardar en Archivos* → iCloud Drive.
 - **Importar respaldo**: elegí un JSON exportado antes. Valida el formato, pide confirmación y **reemplaza por completo** los datos actuales. Si el archivo es inválido, no toca nada.
 
 ## Ajustar la estructura de la cava
