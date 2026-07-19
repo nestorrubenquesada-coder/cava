@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cava</title>
+  <meta name="description" content="Mapa visual de tu cava de vinos: dónde está cada botella.">
+
+  <!-- Aplica el tema guardado antes de cargar el CSS para evitar el "flash" de tema incorrecto.
+       localStorage se usa ÚNICAMENTE para esta preferencia; los datos viven en IndexedDB. -->
+  <script>
+    try {
+      document.documentElement.dataset.theme = localStorage.getItem('cava-theme') || 'auto';
+    } catch (e) {
+      document.documentElement.dataset.theme = 'auto';
+    }
+  </script>
+
+  <meta name="theme-color" id="meta-tc-light" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" id="meta-tc-dark" media="(prefers-color-scheme: dark)" content="#0d1117">
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Cava">
+
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+
+  <header class="app-header">
+    <a class="brand" href="#/cava/principal">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M7.2 1.5h1.6v2.6c0 .9 1.4 1.3 1.4 2.7v6.4a1.3 1.3 0 0 1-1.3 1.3H7.1a1.3 1.3 0 0 1-1.3-1.3V6.8c0-1.4 1.4-1.8 1.4-2.7Z" fill="currentColor"/>
+      </svg>
+      <span>Cava</span>
+    </a>
+
+    <nav class="main-nav" aria-label="Secciones">
+      <a href="#/cava/principal" data-nav="cava">Cava</a>
+      <a href="#/vinos" data-nav="vinos">Vinos</a>
+    </nav>
+
+    <div class="header-actions">
+      <button id="btn-export" class="btn" type="button">Exportar respaldo</button>
+      <button id="btn-import" class="btn" type="button">Importar respaldo</button>
+      <input id="file-import" type="file" accept="application/json,.json" hidden>
+      <button id="btn-theme" class="btn btn--icon" type="button" aria-label="Cambiar tema">
+        <svg id="theme-icon-auto" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 1.75 A6.25 6.25 0 0 1 8 14.25 Z" fill="currentColor"/>
+        </svg>
+        <svg id="theme-icon-light" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" hidden>
+          <circle cx="8" cy="8" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 .75v2M8 13.25v2M.75 8h2M13.25 8h2M2.87 2.87l1.42 1.42M11.71 11.71l1.42 1.42M13.13 2.87l-1.42 1.42M4.29 11.71l-1.42 1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <svg id="theme-icon-dark" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" hidden>
+          <path d="M12.9 8.9A5.5 5.5 0 1 1 7.1 3.1a4.3 4.3 0 0 0 5.8 5.8Z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== Sección Cava: el mapa ===== -->
+    <section id="view-cava" class="view">
+      <div class="tabbar" role="tablist" aria-label="Cavas">
+        <button class="tab" role="tab" type="button" data-tab="principal" aria-selected="true">Principal</button>
+        <button class="tab" role="tab" type="button" data-tab="secundaria" aria-selected="false">Secundaria</button>
+      </div>
+      <div class="map-area">
+        <div class="map-panel" id="map-t1"></div>
+        <div class="map-panel" id="map-t2" hidden></div>
+      </div>
+    </section>
+
+    <!-- ===== Sección Vinos: el catálogo ===== -->
+    <section id="view-vinos" class="view" hidden>
+      <div class="toolbar">
+        <input type="search" id="f-q" placeholder="Buscar por nombre o bodega…" autocomplete="off">
+        <select id="f-varietal" aria-label="Filtrar por varietal">
+          <option value="">Todos los varietales</option>
+        </select>
+        <select id="f-anio" aria-label="Filtrar por año">
+          <option value="">Todos los años</option>
+        </select>
+        <button id="btn-add-vino" class="btn btn--primary" type="button">Agregar vino</button>
+      </div>
+      <div class="vinos-scroll">
+        <div class="vino-list" id="vino-list" hidden></div>
+        <p class="empty-note" id="vinos-empty" hidden></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Diálogo: posición del mapa ===== -->
+  <dialog id="dlg-slot">
+    <div class="dlg-body">
+      <div class="dlg-head">
+        <h2>Posición</h2>
+        <button class="btn btn--icon" type="button" data-close aria-label="Cerrar">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <p class="dlg-sub" id="slot-pos"></p>
+
+      <div id="slot-wine" hidden>
+        <div class="wine-card">
+          <strong id="slot-wine-nombre"></strong>
+          <span class="muted" id="slot-wine-meta"></span>
+          <span class="muted" id="slot-wine-extra"></span>
+        </div>
+        <div class="dlg-actions">
+          <button id="btn-slot-empty" class="btn btn--danger" type="button">Vaciar posición</button>
+          <button id="btn-slot-change" class="btn" type="button">Cambiar vino</button>
+        </div>
+      </div>
+
+      <div id="slot-picker" hidden>
+        <input type="search" id="picker-search" placeholder="Buscar por nombre o bodega…" autocomplete="off">
+        <ul class="picker-list" id="picker-results"></ul>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ===== Diálogo: alta / edición de vino ===== -->
+  <dialog id="dlg-vino">
+    <div class="dlg-body">
+      <div class="dlg-head">
+        <h2 id="vino-form-title">Nuevo vino</h2>
+        <button class="btn btn--icon" type="button" data-close aria-label="Cerrar">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <form id="form-vino">
+        <div class="field">
+          <label for="v-nombre">Nombre</label>
+          <input type="text" id="v-nombre" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="v-bodega">Bodega</label>
+          <input type="text" id="v-bodega" required autocomplete="off">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="v-anio">Año</label>
+            <input type="number" id="v-anio" required min="1800" max="2100" step="1" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label for="v-varietal">Varietal</label>
+            <select id="v-varietal" required></select>
+          </div>
+        </div>
+        <div class="field" id="field-varietal-otro" hidden>
+          <label for="v-varietal-otro">Varietal (texto libre)</label>
+          <input type="text" id="v-varietal-otro" autocomplete="off" disabled>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="v-precio">Precio de compra <span class="opt">(opcional)</span></label>
+            <input type="number" id="v-precio" min="0" step="0.01" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="v-fecha">Fecha de compra <span class="opt">(opcional)</span></label>
+            <input type="date" id="v-fecha">
+          </div>
+        </div>
+        <div class="dlg-actions">
+          <button type="button" class="btn" data-close>Cancelar</button>
+          <button type="submit" class="btn btn--primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- ===== Diálogo: confirmación genérica ===== -->
+  <dialog id="dlg-confirm">
+    <div class="dlg-body">
+      <p id="confirm-msg" class="confirm-msg"></p>
+      <div class="dlg-actions">
+        <button id="confirm-cancel" class="btn" type="button">Cancelar</button>
+        <button id="confirm-ok" class="btn btn--primary" type="button">Aceptar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+</body>
+</html>

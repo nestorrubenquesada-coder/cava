@@ -1,0 +1,516 @@
+/* ============================================================
+   Cava — estilos
+   Estética minimalista estilo GitHub. Theming por CSS variables:
+   - Light por defecto.
+   - Dark vía [data-theme="dark"] (elección manual) o
+     prefers-color-scheme cuando [data-theme="auto"].
+   Los dos bloques dark deben mantenerse idénticos.
+   ============================================================ */
+
+/* ---------- 1. Tokens ---------- */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --border: #d0d7de;
+  --border-faint: rgba(208, 215, 222, 0.6);
+  --surface: #f6f8fa;
+  --surface-hover: #eef1f4;
+  --primary: #1f883d;
+  --primary-hover: #1a7f37;
+  --on-primary: #ffffff;
+  --danger: #d1242f;
+  --danger-solid: #cf222e;
+  --danger-bg: #ffebe9;
+  --ok-bg: #dafbe1;         /* hueco ocupado (verde sutil, tipo contribution graph) */
+  --ok-border: #aceebb;
+  --ok-fg: #1a7f37;
+  --tab-underline: #fd8c73; /* el subrayado coral de las tabs de un repo de GitHub */
+  --focus: #0969da;
+  --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.2);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --fg: #e6edf3;
+  --muted: #8b949e;
+  --border: #30363d;
+  --border-faint: rgba(48, 54, 61, 0.75);
+  --surface: #161b22;
+  --surface-hover: #1f2630;
+  --primary: #238636;
+  --primary-hover: #2ea043;
+  --on-primary: #ffffff;
+  --danger: #f85149;
+  --danger-solid: #da3633;
+  --danger-bg: rgba(248, 81, 73, 0.12);
+  --ok-bg: rgba(46, 160, 67, 0.22);
+  --ok-border: rgba(46, 160, 67, 0.5);
+  --ok-fg: #3fb950;
+  --tab-underline: #fd8c73;
+  --focus: #2f81f7;
+  --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.85);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --border-faint: rgba(48, 54, 61, 0.75);
+    --surface: #161b22;
+    --surface-hover: #1f2630;
+    --primary: #238636;
+    --primary-hover: #2ea043;
+    --on-primary: #ffffff;
+    --danger: #f85149;
+    --danger-solid: #da3633;
+    --danger-bg: rgba(248, 81, 73, 0.12);
+    --ok-bg: rgba(46, 160, 67, 0.22);
+    --ok-border: rgba(46, 160, 67, 0.5);
+    --ok-fg: #3fb950;
+    --tab-underline: #fd8c73;
+    --focus: #2f81f7;
+    --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.85);
+  }
+}
+
+/* ---------- 2. Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--bg);
+  height: 100vh;   /* fallback */
+  height: 100dvh;  /* Safari 15.4+: altura real del viewport */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  -webkit-text-size-adjust: 100%;
+}
+
+[hidden] { display: none !important; }
+
+button { font: inherit; color: inherit; }
+
+:where(button, a, input, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.muted { color: var(--muted); }
+
+/* ---------- 3. Header ---------- */
+.app-header {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 48px;
+  padding: 0 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-right: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+  text-decoration: none;
+}
+.brand svg { color: var(--primary); }
+
+.main-nav { display: flex; }
+.main-nav a {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--fg);
+  text-decoration: none;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.main-nav a.active { font-weight: 600; border-bottom-color: var(--tab-underline); }
+.main-nav a:not(.active):hover { border-bottom-color: var(--border); }
+
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- 4. Botones ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 5px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.btn:hover { background: var(--surface-hover); }
+.btn:active { background: var(--surface-hover); border-color: var(--muted); }
+
+.btn--primary {
+  background: var(--primary);
+  border-color: rgba(31, 35, 40, 0.15);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+.btn--primary:hover, .btn--primary:active { background: var(--primary-hover); }
+
+.btn--danger { color: var(--danger); }
+.btn--danger:hover, .btn--danger:active { background: var(--danger-bg); border-color: var(--danger); }
+
+.btn--danger-solid {
+  background: var(--danger-solid);
+  border-color: rgba(31, 35, 40, 0.15);
+  color: #ffffff;
+  font-weight: 600;
+}
+.btn--danger-solid:hover, .btn--danger-solid:active { filter: brightness(0.94); }
+
+.btn--icon { padding: 5px 9px; }
+.btn--sm { min-height: 30px; padding: 3px 10px; font-size: 13px; }
+
+/* ---------- 5. Layout general ---------- */
+main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ---------- 6. Tabs del mapa (estilo pestañas de repo) ---------- */
+.tabbar {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 10px 14px 8px;
+  font-size: 14px;
+  color: var(--fg);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.tab[aria-selected="true"] { font-weight: 600; border-bottom-color: var(--tab-underline); }
+.tab:not([aria-selected="true"]):hover { border-bottom-color: var(--border); }
+
+/* ---------- 7. Mapa ----------
+   Geometría: cada hueco es un CUADRADO exacto de lado --slot, el mismo
+   en ambas tabs. Los módulos se dimensionan por contenido (tracks fijos
+   que setea app.js desde LAYOUT), y --slot se calcula con unidades de
+   container query para que la tab más exigente entre completa en el
+   área del mapa; si no da, actúa el mínimo del clamp y el área scrollea.
+   "Chrome" de un módulo = 3px padding + 1px borde por lado = 8px.
+   Restricciones con gap = 6px (s = lado del cuadrado):
+   - Tab 1 ancho: 6 mód × (4s + 8) + 5·6      → s ≤ (100cqw − 78) / 24
+   - Tab 1 alto:  4 filas (3s + 8) + (5s + 8) + 4·6 → s ≤ (100cqh − 64) / 17
+   - Tab 2 ancho: 5 mód × (5s + 8) + 4·6      → s ≤ (100cqw − 64) / 25
+   - Tab 2 alto:  2 filas (3s + 8) + 6        → s ≤ (100cqh − 22) / 6   */
+.map-area {
+  --gap: 6px;
+  --slot: 34px; /* fallback si el navegador no soporta container queries */
+  flex: 1;
+  min-height: 0;
+  padding: 10px 12px 12px;
+  overflow: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@supports (container-type: size) {
+  .map-area {
+    container-type: size;
+    --slot: clamp(22px,
+                  min((100cqw - 78px) / 24,
+                      (100cqh - 64px) / 17,
+                      (100cqw - 64px) / 25,
+                      (100cqh - 22px) / 6),
+                  72px);
+  }
+}
+
+.map-panel { width: 100%; height: 100%; }
+
+#map-t1 {
+  display: grid;
+  grid-template-columns: repeat(6, max-content);
+  grid-template-rows: repeat(5, max-content);
+  gap: var(--gap);
+  justify-content: center;
+  align-content: start;
+}
+
+#map-t2 {
+  display: grid;
+  grid-template-columns: repeat(5, max-content);
+  grid-template-rows: repeat(2, max-content);
+  gap: var(--gap);
+  justify-content: center;
+  align-content: start;
+}
+
+/* Módulo: la subcuadrícula interna (columnas/filas) la define app.js
+   inline a partir de LAYOUT, para que las constantes sean la única
+   fuente de verdad de la geometría. El centrado absorbe el sobrante
+   del módulo alto de la tab 2 (su alto lo fija el span de 2 filas). */
+.mod {
+  display: grid;
+  gap: 0;
+  align-content: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Hueco: el botón ocupa la celda completa (área táctil máxima);
+   el visual va en un span interno con inset, así no se pierde
+   superficie táctil en separaciones. */
+.slot {
+  position: relative;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.slot-v {
+  position: absolute;
+  inset: 2px;
+  border: 1px solid var(--border-faint);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  color: transparent;
+  transition: transform 0.06s ease;
+}
+.slot.filled .slot-v {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok-fg);
+}
+.slot:active .slot-v { transform: scale(0.88); }
+
+/* ---------- 8. Vista Vinos ---------- */
+.toolbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+.toolbar input[type="search"] { flex: 1; min-width: 180px; }
+
+input[type="search"], input[type="text"], input[type="number"], input[type="date"], select {
+  min-height: 34px;
+  padding: 5px 10px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+input[type="search"] { -webkit-appearance: none; appearance: none; }
+
+.vinos-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 12px 16px;
+}
+
+.vino-list {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.vino-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+}
+.vino-row + .vino-row { border-top: 1px solid var(--border); }
+.vino-info { flex: 1; min-width: 0; }
+.vino-title {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.vino-meta { color: var(--muted); font-size: 13px; }
+.vino-actions { flex: none; display: flex; gap: 6px; }
+
+.badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 8px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.badge--on {
+  color: var(--ok-fg);
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+}
+
+.empty-note { color: var(--muted); text-align: center; padding: 40px 12px; }
+
+/* ---------- 9. Diálogos ---------- */
+dialog {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  width: min(440px, calc(100vw - 40px));
+  /* Anclado arriba: en iPad el teclado en pantalla no tapa los inputs
+     de un diálogo centrado verticalmente. */
+  margin: 7vh auto auto;
+  margin-top: 7dvh;
+  box-shadow: var(--shadow-lg);
+}
+dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
+
+.dlg-body { padding: 16px; }
+.dlg-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.dlg-head h2 { margin: 0; font-size: 16px; }
+.dlg-sub { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.dlg-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.confirm-msg { margin: 4px 0 0; }
+
+.wine-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+#slot-picker input[type="search"] { width: 100%; }
+.picker-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 40vh;
+  max-height: 40dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.picker-list li + li { border-top: 1px solid var(--border); }
+.picker-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 9px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.picker-list button:hover, .picker-list button:active { background: var(--surface); }
+.picker-name { display: block; font-weight: 600; }
+.picker-sub { display: block; color: var(--muted); font-size: 12.5px; }
+.picker-create { color: var(--primary); font-weight: 600; }
+.picker-note { color: var(--muted); font-size: 12.5px; padding: 8px 12px; margin: 0; }
+
+/* ---------- 10. Formulario ---------- */
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; min-width: 0; }
+.field label { font-size: 13px; font-weight: 600; }
+.field label .opt { font-weight: 400; color: var(--muted); }
+.field input, .field select { width: 100%; }
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ---------- 11. Toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(8px);
+  max-width: min(90vw, 480px);
+  padding: 8px 16px;
+  background: var(--fg);
+  color: var(--bg);
+  border-radius: 6px;
+  font-size: 13.5px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 50;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err { background: var(--danger-solid); color: #ffffff; }
