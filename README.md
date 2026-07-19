@@ -50,7 +50,9 @@ Otras notas de iOS:
 
 ## Respaldos (iCloud Drive)
 
-- **Guardar cambios**: aparece en el header (en verde) solo cuando hay cambios sin respaldar. Descarga un JSON con todo (catálogo + posiciones) y desaparece hasta el próximo cambio. En el iPad se abre la hoja de compartir → *Guardar en Archivos* → iCloud Drive.
+Los datos vivos están en IndexedDB del navegador; el JSON es solo el respaldo, y la única forma de volver a meterlo en la app es *Importar respaldo*.
+
+- **Guardar cambios**: aparece en el header (en verde) solo cuando hay cambios sin respaldar. Exporta un JSON con todo (catálogo + posiciones) y desaparece hasta el próximo cambio. El archivo se llama siempre **`vinos-backup.json`** (sin fecha): en el iPad, la hoja de compartir → *Guardar en Archivos* → misma carpeta de iCloud Drive ofrece **Reemplazar**, así queda un único archivo y no se acumulan copias. (Contracara: no hay historial de respaldos anteriores. En descarga clásica de escritorio, el navegador puede renombrar a `vinos-backup (1).json` si ya existe.)
 - **Importar respaldo**: elegí un JSON exportado antes. Valida el formato, pide confirmación y **reemplaza por completo** los datos actuales. Si el archivo es inválido, no toca nada.
 
 ## Ajustar la estructura de la cava

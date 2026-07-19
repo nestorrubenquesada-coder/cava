@@ -100,7 +100,9 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* El inset superior (y los laterales a la altura del header) los absorbe
+     el propio header (§3), para que su fondo llegue hasta el borde físico. */
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -124,8 +126,12 @@ button { font: inherit; color: inherit; }
   display: flex;
   align-items: stretch;
   gap: 4px;
-  min-height: 48px;
-  padding: 0 12px;
+  min-height: calc(48px + env(safe-area-inset-top));
+  /* Safe areas: el header se "sale" del padding lateral del body con margen
+     negativo y lo recupera como padding propio, así su fondo pinta también
+     bajo el notch (arriba y a los costados en horizontal). */
+  margin: 0 calc(-1 * env(safe-area-inset-right)) 0 calc(-1 * env(safe-area-inset-left));
+  padding: env(safe-area-inset-top) calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -160,7 +166,6 @@ button { font: inherit; color: inherit; }
   touch-action: manipulation;
   transition: background-color 0.12s ease, border-color 0.12s ease;
 }
-.btn:hover { background: var(--surface-hover); }
 .btn:active { background: var(--surface-hover); border-color: var(--muted); }
 
 .btn--primary {
@@ -169,10 +174,10 @@ button { font: inherit; color: inherit; }
   color: var(--on-primary);
   font-weight: 600;
 }
-.btn--primary:hover, .btn--primary:active { background: var(--primary-hover); }
+.btn--primary:active { background: var(--primary-hover); }
 
 .btn--danger { color: var(--danger); }
-.btn--danger:hover, .btn--danger:active { background: var(--danger-bg); border-color: var(--danger); }
+.btn--danger:active { background: var(--danger-bg); border-color: var(--danger); }
 
 .btn--danger-solid {
   background: var(--danger-solid);
@@ -180,10 +185,23 @@ button { font: inherit; color: inherit; }
   color: #ffffff;
   font-weight: 600;
 }
-.btn--danger-solid:hover, .btn--danger-solid:active { filter: brightness(0.94); }
+.btn--danger-solid:active { filter: brightness(0.94); }
+
+/* Hover solo con puntero real: en touch (iPad/iPhone) el :hover queda
+   "pegado" después del tap. Los :active de arriba cubren el feedback táctil. */
+@media (hover: hover) {
+  .btn:hover { background: var(--surface-hover); }
+  .btn--primary:hover { background: var(--primary-hover); }
+  .btn--danger:hover { background: var(--danger-bg); border-color: var(--danger); }
+  .btn--danger-solid:hover { filter: brightness(0.94); }
+}
 
 .btn--icon { padding: 5px 9px; }
 .btn--sm { min-height: 30px; padding: 3px 10px; font-size: 13px; }
+
+/* Etiquetas dobles del header: la corta solo se muestra en pantallas
+   angostas (ver §12). */
+.btn .lbl-compact { display: none; }
 
 /* ---------- 5. Layout general ---------- */
 main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -204,18 +222,27 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
    Marco del mueble = 8px padding + 1px borde por lado = 18px por eje.
    El padding de página (10px 12px 12px) vive en .map-panel — el área en
    sí no tiene padding para que cada página mida exactamente 100cqw.
-   Restricciones con gap = 6px (s = lado del cuadrado):
-   - Secc 1 ancho: 24+18px + 6 mód × (4s + 8) + 5·6      → s ≤ (100cqw − 120) / 24
-   - Secc 1 alto:  22+18px + 3 filas (3s + 8) + (5s + 8) + 3·6 → s ≤ (100cqh − 90) / 14
-   - Secc 2 ancho: 24+18px + 5 mód × (5s + 8) + 4·6      → s ≤ (100cqw − 106) / 25
-   - Secc 2 alto:  22+18px + 2 filas (3s + 8) + 6        → s ≤ (100cqh − 62) / 6   */
+   Restricciones con gap = 9px (s = lado del cuadrado; el gap iguala el
+   grosor visible del marco: 8px de padding + 1px de borde). Los dos
+   muebles miden lo mismo de alto (las filas ciegas espejan a la secc 1):
+   - Secc 1 ancho: 24+18px + 6 mód × (4s + 8) + 5·9      → s ≤ (100cqw − 135) / 24
+   - Alto (ambas): 22+18px + 3 filas (3s + 8) + (5s + 8) + 3·9 → s ≤ (100cqh − 99) / 14
+   - Secc 2 ancho: 24+18px + 5 mód × (5s + 8) + 4·9      → s ≤ (100cqw − 118) / 25
+   Donde ni así entra (iPhone: 24 columnas de huecos no caben en < 700px a
+   tamaño usable), §12 pasa el área a "modo paneo": cada panel toma el
+   tamaño de su contenido, sin snap, y --slot-min sube para que el hueco
+   siga siendo tocable; las flechas saltan por offset real del panel
+   (app.js §8). El breakpoint de §12 garantiza que en modo ancho el clamp
+   nunca toque su mínimo: la sección siempre entra completa.               */
 .map-area {
-  --gap: 6px;
+  --gap: 9px; /* barras internas del mueble = grosor visible del marco */
+  --slot-min: 22px;
   --slot: 34px; /* fallback si el navegador no soporta container queries */
   flex: 1;
   min-height: 0;
   display: flex;
   overflow: auto;
+  overscroll-behavior: contain; /* sin pull-to-refresh ni "back" por swipe en iOS */
   scroll-snap-type: x mandatory;
   scrollbar-width: none; /* la navegación es swipe/flechas, sin barra */
   user-select: none;
@@ -226,11 +253,10 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 @supports (container-type: size) {
   .map-area {
     container-type: size;
-    --slot: clamp(22px,
-                  min((100cqw - 120px) / 24,
-                      (100cqh - 90px) / 14,
-                      (100cqw - 106px) / 25,
-                      (100cqh - 62px) / 6),
+    --slot: clamp(var(--slot-min),
+                  min((100cqw - 135px) / 24,
+                      (100cqh - 99px) / 14,
+                      (100cqw - 118px) / 25),
                   72px);
   }
 }
@@ -268,7 +294,9 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.map-arrow:hover { background: var(--surface-hover); }
+@media (hover: hover) {
+  .map-arrow:hover { background: var(--surface-hover); }
+}
 .map-arrow--prev { left: 10px; }
 .map-arrow--next { right: 10px; }
 
@@ -291,14 +319,7 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 #map-t2 {
   grid-template-columns: repeat(5, max-content);
-  grid-template-rows: repeat(2, max-content);
-  /* El tope del mueble 2 debe alinearse con el del mueble 1. Como el panel
-     centra verticalmente, se compensa la diferencia de alturas con margen
-     inferior (el centrado posiciona la caja de margen):
-     alto 1 = 3·(3s+8) + (5s+8) + 3·6 + 18 = 14s + 68
-     alto 2 = 2·(3s+8) + 6 + 18          =  6s + 40
-     diferencia = 8s + 28                                            */
-  margin-bottom: calc(8 * var(--slot) + 28px);
+  grid-template-rows: repeat(4, max-content);
 }
 
 /* Módulo: la subcuadrícula interna (columnas/filas) la define app.js
@@ -495,7 +516,10 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.picker-list button:hover, .picker-list button:active { background: var(--surface); }
+.picker-list button:active { background: var(--surface); }
+@media (hover: hover) {
+  .picker-list button:hover { background: var(--surface); }
+}
 .picker-name { display: block; font-weight: 600; }
 .picker-sub { display: block; color: var(--muted); font-size: 12.5px; }
 .picker-create { color: var(--primary); font-weight: 600; }
@@ -532,3 +556,59 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.err { background: var(--danger-solid); color: #ffffff; }
+
+/* ---------- 12. Responsive: pantallas chicas y touch ----------
+   El breakpoint cubre iPhone en vertical (ancho) y en horizontal (alto).
+   Por debajo, el mapa pasa al "modo paneo" descripto en §7: los paneles
+   toman el tamaño de su contenido y se panea dentro de la sección. El snap
+   obligatorio se apaga porque con páginas más anchas que el viewport pelea
+   contra el paneo (el scroll rebota a los bordes de página). */
+@media (max-width: 700px), (max-height: 500px) {
+  .map-area {
+    --slot-min: 30px; /* piso táctil: en modo paneo no hace falta que entre */
+    scroll-snap-type: none;
+  }
+  .map-panel {
+    flex: 0 0 auto;
+    width: max-content;
+    min-width: 100%;
+    height: max-content;
+    min-height: 100%;
+  }
+}
+
+/* Header compacto: con las etiquetas largas, en un iPhone los botones no
+   entran y el de tema queda directamente fuera de pantalla. */
+@media (max-width: 480px) {
+  .btn .lbl-full { display: none; }
+  .btn .lbl-compact { display: inline; }
+}
+
+/* Filtros del catálogo: los selects reparten el ancho del renglón en vez
+   de apilarse de a uno, y la acción primaria ocupa el renglón completo. */
+@media (max-width: 700px) {
+  .toolbar select { flex: 1; min-width: 140px; }
+  #btn-add-vino { flex: 1; }
+}
+
+/* Touch: áreas táctiles más generosas e inputs de 16px — con menos, iOS
+   hace zoom automático al enfocar el campo y desacomoda el layout. */
+@media (pointer: coarse) {
+  .btn { min-height: 38px; }
+  .btn--sm { min-height: 34px; }
+  input[type="search"], input[type="text"], input[type="number"], input[type="date"], select {
+    min-height: 38px;
+    font-size: 16px;
+  }
+}
+
+/* Pantallas mínimas (320–360px): compactar el header un toque más. */
+@media (max-width: 360px) {
+  .app-header {
+    gap: 2px;
+    padding-left: calc(8px + env(safe-area-inset-left));
+    padding-right: calc(8px + env(safe-area-inset-right));
+  }
+  .header-actions { gap: 6px; }
+  .btn { padding: 5px 10px; font-size: 13px; }
+}

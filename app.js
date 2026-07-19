@@ -23,7 +23,11 @@ const LAYOUT = {
   tab2: {
     modulos: { cols: 4, filas: 2 },
     slotsPorModulo: { cols: 5, filas: 3 },
-    columnaFinal: { cols: 5, filas: 6 },        // módulo alto que ocupa las 2 filas (dos módulos normales apilados)
+    columnaFinal: { cols: 5, filas: 11 },       // módulo alto de la columna final: ocupa las filas 2–4
+                                                // (11 filas de huecos llenan su alto: 11s+8 dentro de 11s+42)
+    filasCiegas: [3, 5],                        // filas 3 y 4 (columnas 1–4): módulos SIN huecos que completan
+                                                // el mueble (alturas en huecos; espejan las filas 3 y 4 de la
+                                                // tab 1). La fila 1 de la columna final también es ciega.
   }
 };
 
@@ -39,6 +43,7 @@ const DB_VERSION = 1;
 const THEME_KEY = 'cava-theme';
 const DIRTY_KEY = 'cava-dirty'; // hay cambios sin respaldar (ver §12)
 const BACKUP_SCHEMA_VERSION = 1;
+const BACKUP_FILENAME = 'vinos-backup.json'; // nombre fijo: se reemplaza siempre el mismo archivo (ver §12)
 const SLOT_ID_RE = /^t([12])-m(\d{2})-(\d{2})-s(\d{2})-(\d{2})$/;
 
 /* ============================================================================
@@ -128,8 +133,8 @@ function withTx(db, storeNames, mode, fn) {
    Id de slot: "t{tab}-m{fila}-{col}-s{fila}-{col}", coordenadas 1-based con
    dos dígitos (p. ej. "t1-m05-02-s03-04"). El orden lexicográfico coincide
    con el orden físico. El módulo alto de la tab 2 es simplemente el módulo
-   (fila 1, columna 5) con filas internas 01–06: solo el render sabe que
-   ocupa dos filas de la grilla.
+   (fila 2, columna 5) con filas internas 01–11: solo el render sabe que
+   ocupa tres filas de la grilla.
    ============================================================================ */
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -173,8 +178,23 @@ function modulesOf(tab) {
         out.push({ tab, modFila: mf, modCol: mc, inner: L.slotsPorModulo, alto: false });
       }
     }
-    // Módulo alto de la columna final: ocupa todo el alto de la grilla.
-    out.push({ tab, modFila: 1, modCol: L.modulos.cols + 1, inner: L.columnaFinal, alto: true });
+    // Columna final: la fila 1 es un módulo ciego y el módulo alto ocupa
+    // las últimas 3 filas (2–4).
+    out.push({
+      tab, modFila: 1, modCol: L.modulos.cols + 1,
+      inner: { cols: L.slotsPorModulo.cols, filas: L.slotsPorModulo.filas }, alto: false, ciego: true,
+    });
+    out.push({ tab, modFila: 2, modCol: L.modulos.cols + 1, inner: L.columnaFinal, alto: true });
+    // Filas ciegas: completan el mueble por debajo, sin huecos de vino
+    // (solo columnas 1–4: la final ya está cubierta por el módulo alto).
+    L.filasCiegas.forEach((filas, i) => {
+      for (let mc = 1; mc <= L.modulos.cols; mc++) {
+        out.push({
+          tab, modFila: L.modulos.filas + 1 + i, modCol: mc,
+          inner: { cols: L.slotsPorModulo.cols, filas }, alto: false, ciego: true,
+        });
+      }
+    });
   }
   return out;
 }
@@ -182,6 +202,7 @@ function modulesOf(tab) {
 /** Recorre todos los huecos esperados según LAYOUT (fuente de verdad de la geometría). */
 function forEachExpectedSlot(cb) {
   for (const mod of [...modulesOf(1), ...modulesOf(2)]) {
+    if (mod.ciego) continue; // solo estructura visual: sin huecos ni registros
     for (let sf = 1; sf <= mod.inner.filas; sf++) {
       for (let sc = 1; sc <= mod.inner.cols; sc++) {
         cb({ ...mod, slotFila: sf, slotCol: sc, id: makeSlotId(mod.tab, mod.modFila, mod.modCol, sf, sc) });
@@ -351,27 +372,30 @@ function buildTab(tab, panelEl) {
   const frag = document.createDocumentFragment();
   for (const mod of modulesOf(tab)) {
     const modEl = document.createElement('div');
-    modEl.className = 'mod';
+    modEl.className = mod.ciego ? 'mod mod--ciego' : 'mod';
     // La subcuadrícula interna sale de LAYOUT (única fuente de verdad).
     // Tracks fijos de --slot px: cada hueco es un cuadrado exacto (ver §7 del CSS).
+    // En los módulos ciegos los tracks vacíos igual dan el tamaño del módulo.
     modEl.style.gridTemplateColumns = `repeat(${mod.inner.cols}, var(--slot))`;
     modEl.style.gridTemplateRows = `repeat(${mod.inner.filas}, var(--slot))`;
-    // Posición explícita en la grilla de módulos; el módulo alto ocupa las 2 filas.
+    // Posición explícita en la grilla de módulos; el módulo alto ocupa 3 filas.
     modEl.style.gridColumn = String(mod.modCol);
-    modEl.style.gridRow = mod.alto ? `${mod.modFila} / span 2` : String(mod.modFila);
+    modEl.style.gridRow = mod.alto ? `${mod.modFila} / span 3` : String(mod.modFila);
 
-    for (let sf = 1; sf <= mod.inner.filas; sf++) {
-      for (let sc = 1; sc <= mod.inner.cols; sc++) {
-        const id = makeSlotId(tab, mod.modFila, mod.modCol, sf, sc);
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'slot';
-        btn.dataset.slotId = id;
-        const label = document.createElement('span');
-        label.className = 'slot-v';
-        btn.appendChild(label);
-        modEl.appendChild(btn);
-        state.slotEls.set(id, { btn, label });
+    if (!mod.ciego) {
+      for (let sf = 1; sf <= mod.inner.filas; sf++) {
+        for (let sc = 1; sc <= mod.inner.cols; sc++) {
+          const id = makeSlotId(tab, mod.modFila, mod.modCol, sf, sc);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'slot';
+          btn.dataset.slotId = id;
+          const label = document.createElement('span');
+          label.className = 'slot-v';
+          btn.appendChild(label);
+          modEl.appendChild(btn);
+          state.slotEls.set(id, { btn, label });
+        }
       }
     }
     frag.appendChild(modEl);
@@ -400,20 +424,25 @@ function refreshAllSlotEls() {
   for (const id of state.slotEls.keys()) updateSlotEl(id);
 }
 
-/* Carrusel: flechas para pasar de sección (el swipe táctil lo da scroll-snap
-   solo; acá solo se pagina con las flechas y se alterna cuál se muestra). */
+/* Carrusel: flechas para pasar de sección (el swipe táctil lo da el scroll
+   solo; acá solo se pagina con las flechas y se alterna cuál se muestra).
+   En modo ancho cada panel mide exactamente una página, pero en modo paneo
+   (§12 del CSS, iPhone) los paneles son más anchos que el viewport: por eso
+   la paginación usa el offset real del segundo panel y no múltiplos de
+   clientWidth. */
 function wireMapPager() {
   const area = $('.map-area');
   const prev = $('#map-prev');
   const next = $('#map-next');
+  const panel2 = area.children[1];
 
-  const page = () => Math.round(area.scrollLeft / area.clientWidth);
-  const go = (dir) => area.scrollTo({ left: (page() + dir) * area.clientWidth, behavior: 'smooth' });
+  const go = (dir) => area.scrollTo({ left: dir > 0 ? panel2.offsetLeft : 0, behavior: 'smooth' });
   prev.addEventListener('click', () => go(-1));
   next.addEventListener('click', () => go(1));
 
   const update = () => {
-    const enSegunda = area.scrollLeft > area.clientWidth / 2;
+    // "En la segunda" = el centro del viewport ya cruzó al segundo panel.
+    const enSegunda = area.scrollLeft + area.clientWidth / 2 >= panel2.offsetLeft;
     prev.hidden = !enSegunda;
     next.hidden = enSegunda;
   };
@@ -827,6 +856,9 @@ function wireVinoForm() {
    12. RESPALDO: EXPORTAR / IMPORTAR JSON
    Formato del archivo:
    { app: "cava", schemaVersion: 1, exportedAt: ISO, vinos: [...], slots: [...] }
+   El respaldo es UN único archivo con nombre fijo (BACKUP_FILENAME): al
+   guardarlo en la misma carpeta, Archivos (iOS) ofrece reemplazar el
+   anterior, así no se acumulan copias fechadas.
    Importar reemplaza TODO el contenido en una sola transacción: si algo
    falla, IndexedDB revierte también los clear() y no se pierde nada.
 
@@ -865,16 +897,14 @@ async function exportBackup() {
     slots,
   };
   const json = JSON.stringify(envelope, null, 2);
-  const d = new Date();
-  const filename = `vinos-backup-${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.json`;
 
   // En iPad, la hoja de compartir ofrece "Guardar en Archivos" (iCloud Drive)
   // y funciona también instalada como PWA, donde la descarga por <a> es frágil.
   if ('ontouchend' in document && navigator.canShare) {
     try {
-      const file = new File([json], filename, { type: 'application/json' });
+      const file = new File([json], BACKUP_FILENAME, { type: 'application/json' });
       if (navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: filename });
+        await navigator.share({ files: [file], title: BACKUP_FILENAME });
         setDirty(false);
         toast('Respaldo exportado');
         return;
@@ -888,7 +918,7 @@ async function exportBackup() {
   const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = BACKUP_FILENAME;
   document.body.appendChild(a);
   a.click();
   a.remove();
