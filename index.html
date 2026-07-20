@@ -14,7 +14,10 @@
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- black-translucent: el web view se extiende bajo la barra de estado (el
+       inset-top pasa a ser > 0) y el header pinta su color bajo el notch /
+       Dynamic Island. Con "default" la barra quedaba del color de fondo. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Cava">
 
   <link rel="stylesheet" href="./styles.css">
@@ -53,13 +56,17 @@
            huecos cuyo vino no coincide (app.js §8). -->
       <div class="map-subheader">
         <div class="map-filters">
-          <input type="search" id="mf-q" placeholder="Buscar vino…" autocomplete="off" aria-label="Buscar vino en el mapa">
+          <input type="search" id="mf-q" placeholder="Buscar vino o bodega…" autocomplete="off" aria-label="Buscar vino o bodega en el mapa">
+          <select id="mf-bodega" aria-label="Filtrar mapa por bodega">
+            <option value="">Todas las bodegas</option>
+          </select>
           <select id="mf-varietal" aria-label="Filtrar mapa por varietal">
-            <option value="">Varietal</option>
+            <option value="">Todos los varietales</option>
           </select>
           <select id="mf-anio" aria-label="Filtrar mapa por año">
-            <option value="">Año</option>
+            <option value="">Todos los años</option>
           </select>
+          <button id="mf-clear" class="btn" type="button" hidden><span class="lbl-full">Limpiar filtros</span><span class="lbl-compact">Limpiar</span></button>
         </div>
       </div>
       <!-- Chevrones flotantes de navegación: desnudos (sin fondo ni borde),
@@ -90,13 +97,17 @@
     <!-- ===== Sección Vinos: el catálogo ===== -->
     <section id="view-vinos" class="view" hidden>
       <div class="toolbar">
-        <input type="search" id="f-q" placeholder="Buscar por nombre o bodega…" autocomplete="off">
+        <input type="search" id="f-q" placeholder="Buscar vino o bodega…" autocomplete="off">
+        <select id="f-bodega" aria-label="Filtrar por bodega">
+          <option value="">Todas las bodegas</option>
+        </select>
         <select id="f-varietal" aria-label="Filtrar por varietal">
           <option value="">Todos los varietales</option>
         </select>
         <select id="f-anio" aria-label="Filtrar por año">
           <option value="">Todos los años</option>
         </select>
+        <button id="f-clear" class="btn" type="button" hidden><span class="lbl-full">Limpiar filtros</span><span class="lbl-compact">Limpiar</span></button>
         <button id="btn-add-vino" class="btn btn--primary" type="button">Agregar vino</button>
       </div>
       <div class="vinos-scroll">
@@ -165,8 +176,8 @@
         </div>
         <div class="field-row field-row--varietal">
           <div class="field">
-            <label for="v-anio">Año</label>
-            <select id="v-anio" required></select>
+            <label for="v-anio">Año <span class="opt">(opcional)</span></label>
+            <select id="v-anio"></select>
           </div>
           <div class="field">
             <label for="v-varietal">Varietal</label>

@@ -40,9 +40,9 @@
   /* Madera de los estantes: lo que asoma entre los huecos. Nogal agrisado:
      misma luminosidad que un marrón cálido pero con menos saturación, para
      que convive con el greige del fondo sin tirar a naranja. */
-  --wood: #5f4631;
-  --wood-light: #674e38;     /* tope del degradado de veta */
-  --wood-dark: #3d2c1d;
+  --wood: #715641;           /* nogal un punto más claro que el original #5f4631 */
+  --wood-light: #7d6249;     /* tope del degradado de veta */
+  --wood-dark: #4c3826;
   /* Hueco vacío: oscuro neutro-cálido, tallado en la madera. Antes tiraba a
      azul (#1c2027, el más frío del sistema); se lo caldea a tono con el resto. */
   --slot-empty-bg: #221f20;
@@ -400,6 +400,7 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .map-filters {
   display: flex;
   flex: 1;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -446,6 +447,13 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   padding: 4px;
   min-width: 0;
   min-height: 0;
+}
+
+/* Módulos ciegos (inhabilitados, sin huecos): panel gris cálido en vez de
+   madera, para que se lean como estructura muerta y no como estante. */
+.mod--ciego {
+  background: linear-gradient(180deg, #726d64, #615c54);
+  border-color: #474540;
 }
 
 /* Heladera: la columna final de la cava secundaria. Cuerpo gris
@@ -548,6 +556,11 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   padding: 12px;
 }
 .toolbar input[type="search"] { flex: 1; min-width: 180px; }
+
+/* Los tres filtros (bodega · varietal · año) con el MISMO ancho en ambas
+   pantallas en desktop; el buscador absorbe el sobrante. En mobile el media
+   query de más abajo los pasa a repartir el renglón en partes iguales. */
+.toolbar select, .map-filters select { flex: 0 0 auto; width: 13.5em; }
 
 input[type="search"], input[type="text"], input[type="number"], input[type="date"],
 input[type="password"], select {
@@ -1100,10 +1113,14 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
    de apilarse de a uno, y la acción primaria ocupa el renglón completo.
    Subheader del mapa: los tres controles reparten el único renglón. */
 @media (max-width: 700px) {
-  .toolbar select { flex: 1; min-width: 140px; }
-  #btn-add-vino { flex: 1; }
-  .map-filters input[type="search"] { min-width: 110px; }
-  .map-filters select { flex: 1; min-width: 0; }
+  /* Renglones parejos en catálogo y subheader del mapa: buscador solo (1),
+     los tres selects exactos en el siguiente (2), y los botones en el que
+     sigue (3). Las bases con calc fuerzan el corte de fila justo (gap = 8px):
+     3 selects + 2 gaps = 100%, 2 botones + 1 gap = 100%. */
+  .toolbar input[type="search"],
+  .map-filters input[type="search"] { flex: 1 1 100%; }
+  .toolbar select, .map-filters select { flex: 1 1 calc((100% - 16px) / 3); width: auto; min-width: 0; }
+  #btn-add-vino, #f-clear, #mf-clear { flex: 1 1 calc((100% - 8px) / 2); min-width: 0; }
 }
 
 /* Touch: áreas táctiles más generosas e inputs de 16px — con menos, iOS

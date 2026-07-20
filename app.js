@@ -159,8 +159,8 @@ function fmtPrecio(n) {
 /* ============================================================================
    3. INDEXEDDB
    Esquema (versión 1):
-     - "vinos": keyPath "id" (string UUID). Campos: nombre, bodega, anio,
-       varietal y opcionales precioCompra, fechaCompra.
+     - "vinos": keyPath "id" (string UUID). Campos: nombre, bodega,
+       varietal y opcionales sigla, anio, precioCompra, fechaCompra.
      - "slots": keyPath "id" (string derivado de la posición física, ver §4).
        Campos: vinoId (id de "vinos") o null si el hueco está vacío.
    Sin índices: el dataset completo (≈460 slots + catálogo) se carga en
@@ -400,8 +400,8 @@ const state = {
   pendingSlotId: null,   // hueco a asignar cuando se crea un vino desde el selector
   editingVinoId: null,   // vino en edición en el formulario (null = alta)
   mapScrollLeft: 0,      // página del carrusel al salir del mapa (se restaura al volver)
-  filters: { q: '', varietal: '', anio: '' },     // filtros del catálogo (§10)
-  mapFilters: { q: '', varietal: '', anio: '' },  // filtros del MAPA (§8), independientes
+  filters: { q: '', bodega: '', varietal: '', anio: '' },     // filtros del catálogo (§10)
+  mapFilters: { q: '', bodega: '', varietal: '', anio: '' },  // filtros del MAPA (§8), independientes
 };
 
 /* ============================================================================
@@ -666,7 +666,7 @@ function updateSlotEl(slotId) {
   els.btn.classList.toggle('filled', !!vino);
   // Sigla (editable, máx. 3) o, por defecto, la inicial de cada palabra del nombre.
   els.sigla.textContent = vino ? (vino.sigla || defaultSigla(vino.nombre)) : '';
-  els.anio.textContent = vino ? String(vino.anio) : '';
+  els.anio.textContent = vino && vino.anio != null ? String(vino.anio) : '';
   if (vino) {
     const c = slotColors(vino.varietal);
     els.box.style.background = c.bg;
@@ -677,7 +677,7 @@ function updateSlotEl(slotId) {
     els.box.style.borderColor = '';
     els.box.style.color = '';
   }
-  els.btn.title = vino ? `${vino.nombre} — ${vino.bodega} (${vino.anio})` : '';
+  els.btn.title = vino ? `${vino.nombre} — ${vino.bodega}${vino.anio != null ? ` (${vino.anio})` : ''}` : '';
   els.btn.setAttribute('aria-label', `${vino ? vino.nombre : 'Hueco vacío'} — ${describeSlot(slotId)}`);
   // El dim del filtro del mapa se re-evalúa acá para que cualquier mutación
   // puntual (asignar, vaciar, borrar, importar) lo mantenga al día gratis.
@@ -688,17 +688,21 @@ function refreshAllSlotEls() {
   for (const id of state.slotEls.keys()) updateSlotEl(id);
 }
 
-/* Filtro del mapa: state.mapFilters atenúa (.slot--dim) los huecos cuyo
-   vino no coincide, y también los vacíos, para que los que coinciden salten
-   a la vista. updateSlotEl consulta slotDimmed() en cada actualización
-   puntual, así toda mutación re-aplica el filtro sin pasos extra. */
+/* Filtro del mapa: state.mapFilters atenúa (.slot--dim) SOLO los huecos
+   OCUPADOS cuyo vino no coincide. Los vacíos quedan intactos (color y
+   clickeables) para poder ubicar un vino aunque haya una búsqueda activa.
+   updateSlotEl consulta slotDimmed() en cada actualización puntual, así
+   toda mutación re-aplica el filtro sin pasos extra. */
+function filtersActive(f) {
+  return !!(f.q.trim() || f.bodega || f.varietal || f.anio);
+}
+
 function isMapFilterActive() {
-  const f = state.mapFilters;
-  return !!(f.q.trim() || f.varietal || f.anio);
+  return filtersActive(state.mapFilters);
 }
 
 function slotDimmed(vino) {
-  return isMapFilterActive() && (!vino || !vinoMatchesFilters(vino, state.mapFilters));
+  return isMapFilterActive() && !!vino && !vinoMatchesFilters(vino, state.mapFilters);
 }
 
 function applyMapFilter() {
@@ -707,12 +711,43 @@ function applyMapFilter() {
     const vino = slot && slot.vinoId ? state.vinos.get(slot.vinoId) : null;
     els.btn.classList.toggle('slot--dim', slotDimmed(vino));
   }
+  updateMapClearBtn();
+}
+
+/** Muestra el botón "Limpiar filtros" de cada pantalla solo si hay filtro activo. */
+function updateMapClearBtn() {
+  const btn = $('#mf-clear');
+  if (btn) btn.hidden = !filtersActive(state.mapFilters);
+}
+function updateVinoClearBtn() {
+  const btn = $('#f-clear');
+  if (btn) btn.hidden = !filtersActive(state.filters);
+}
+
+/** Resetea todos los filtros de una pantalla (buscador + selects) y repinta. */
+function clearMapFilters() {
+  state.mapFilters = { q: '', bodega: '', varietal: '', anio: '' };
+  for (const sel of ['#mf-q', '#mf-bodega', '#mf-varietal', '#mf-anio']) $(sel).value = '';
+  applyMapFilter();
+}
+function clearVinoFilters() {
+  state.filters = { q: '', bodega: '', varietal: '', anio: '' };
+  for (const sel of ['#f-q', '#f-bodega', '#f-varietal', '#f-anio']) $(sel).value = '';
+  renderVinos();
 }
 
 function wireMapFilters() {
   $('#mf-q').addEventListener('input', (e) => { state.mapFilters.q = e.target.value; applyMapFilter(); });
+  $('#mf-bodega').addEventListener('change', (e) => { state.mapFilters.bodega = e.target.value; applyMapFilter(); });
   $('#mf-varietal').addEventListener('change', (e) => { state.mapFilters.varietal = e.target.value; applyMapFilter(); });
   $('#mf-anio').addEventListener('change', (e) => { state.mapFilters.anio = e.target.value; applyMapFilter(); });
+  $('#mf-clear').addEventListener('click', clearMapFilters);
+  // Al cruzar el breakpoint mobile/desktop, recalcular las etiquetas "todos"
+  // (cortas en mobile, largas en desktop) reconstruyendo ambos grupos de selects.
+  window.matchMedia(MOBILE_MQ).addEventListener('change', () => {
+    populateFilterOptions();
+    populateMapFilterOptions();
+  });
 }
 
 /* Carrusel: chevrones laterales para pasar de sección (el swipe táctil lo da
@@ -760,7 +795,7 @@ function renderSlotWine() {
   $('#slot-wine').hidden = false;
   $('#slot-picker').hidden = true;
   $('#slot-wine-nombre').textContent = vino.nombre;
-  $('#slot-wine-meta').textContent = `${vino.bodega} · ${vino.anio} · ${vino.varietal}`;
+  $('#slot-wine-meta').textContent = vinoMeta(vino);
   const extra = [];
   if (vino.precioCompra != null) extra.push(fmtPrecio(vino.precioCompra));
   if (vino.fechaCompra) extra.push(`Comprado el ${fmtFecha(vino.fechaCompra)}`);
@@ -811,7 +846,7 @@ function renderPicker(query) {
     name.textContent = vino.nombre;
     const sub = document.createElement('span');
     sub.className = 'picker-sub';
-    sub.textContent = `${vino.bodega} · ${vino.anio} · ${vino.varietal}`;
+    sub.textContent = vinoMeta(vino);
     btn.append(name, sub);
 
     const btnEdit = document.createElement('button');
@@ -921,13 +956,14 @@ function wireSlotDialog() {
    10. VISTA VINOS (catálogo)
    ============================================================================ */
 
-/** ¿El vino cumple los filtros f ({q, varietal, anio})? Lo usan el catálogo
+/** ¿El vino cumple los filtros f ({q, bodega, varietal, anio})? Lo usan el catálogo
     (state.filters) y el filtro del mapa (state.mapFilters). */
 function vinoMatchesFilters(vino, f) {
   if (f.q) {
     const q = norm(f.q);
     if (!norm(vino.nombre).includes(q) && !norm(vino.bodega).includes(q)) return false;
   }
+  if (f.bodega && vino.bodega !== f.bodega) return false;
   if (f.varietal && vino.varietal !== f.varietal) return false;
   if (f.anio && String(vino.anio) !== f.anio) return false;
   return true;
@@ -937,8 +973,9 @@ function vinoMatchesFilters(vino, f) {
 function collectFilterValues() {
   const vinos = [...state.vinos.values()];
   return {
+    bodegas: collectBodegas(),
     varietales: [...new Set(vinos.map((v) => v.varietal))].sort((a, b) => norm(a).localeCompare(norm(b))),
-    anios: [...new Set(vinos.map((v) => v.anio))].sort((a, b) => b - a),
+    anios: [...new Set(vinos.map((v) => v.anio).filter((a) => a != null))].sort((a, b) => b - a),
   };
 }
 
@@ -948,20 +985,36 @@ function collectBodegas() {
     .sort((a, b) => norm(a).localeCompare(norm(b)));
 }
 
+/* Etiqueta "todos" de cada filtro: corta en mobile (el ancho de 1/3 de renglón
+   no da para el texto largo y se trunca ambiguo) y completa en desktop. Se
+   recalcula al cruzar el breakpoint (ver el listener en wireMapFilters). */
+const MOBILE_MQ = '(max-width: 700px)';
+const FILTER_ALL_LABEL = {
+  bodega: ['Todas las bodegas', 'Bodega'],
+  varietal: ['Todos los varietales', 'Varietal'],
+  anio: ['Todos los años', 'Año'],
+};
+function filterAllLabel(key) {
+  return FILTER_ALL_LABEL[key][window.matchMedia(MOBILE_MQ).matches ? 1 : 0];
+}
+
 /** Rellena los selects de filtro del catálogo con los valores presentes. */
 function populateFilterOptions() {
-  const { varietales, anios } = collectFilterValues();
-  rebuildSelect($('#f-varietal'), 'Todos los varietales', varietales.map((v) => [v, v]), state.filters.varietal);
-  rebuildSelect($('#f-anio'), 'Todos los años', anios.map((a) => [String(a), String(a)]), state.filters.anio);
+  const { bodegas, varietales, anios } = collectFilterValues();
+  rebuildSelect($('#f-bodega'), filterAllLabel('bodega'), bodegas.map((b) => [b, b]), state.filters.bodega);
+  rebuildSelect($('#f-varietal'), filterAllLabel('varietal'), varietales.map((v) => [v, v]), state.filters.varietal);
+  rebuildSelect($('#f-anio'), filterAllLabel('anio'), anios.map((a) => [String(a), String(a)]), state.filters.anio);
 }
 
 /** Ídem para los selects del mapa (§8). Si el valor elegido desapareció del
     catálogo, rebuildSelect resetea el select a '': se re-lee el valor real
     para que el filtro no quede "zombi", y se re-aplica el atenuado. */
 function populateMapFilterOptions() {
-  const { varietales, anios } = collectFilterValues();
-  rebuildSelect($('#mf-varietal'), 'Varietal', varietales.map((v) => [v, v]), state.mapFilters.varietal);
-  rebuildSelect($('#mf-anio'), 'Año', anios.map((a) => [String(a), String(a)]), state.mapFilters.anio);
+  const { bodegas, varietales, anios } = collectFilterValues();
+  rebuildSelect($('#mf-bodega'), filterAllLabel('bodega'), bodegas.map((b) => [b, b]), state.mapFilters.bodega);
+  rebuildSelect($('#mf-varietal'), filterAllLabel('varietal'), varietales.map((v) => [v, v]), state.mapFilters.varietal);
+  rebuildSelect($('#mf-anio'), filterAllLabel('anio'), anios.map((a) => [String(a), String(a)]), state.mapFilters.anio);
+  state.mapFilters.bodega = $('#mf-bodega').value;
   state.mapFilters.varietal = $('#mf-varietal').value;
   state.mapFilters.anio = $('#mf-anio').value;
   applyMapFilter();
@@ -982,14 +1035,20 @@ function rebuildSelect(selectEl, allLabel, pairs, current) {
   selectEl.value = pairs.some(([v]) => v === current) ? current : '';
 }
 
+/** "bodega · año · varietal" para fichas y listas; omite el año si el vino no tiene. */
+function vinoMeta(vino) {
+  return [vino.bodega, vino.anio, vino.varietal].filter((p) => p != null && p !== '').join(' · ');
+}
+
 function renderVinos() {
+  updateVinoClearBtn();
   const listEl = $('#vino-list');
   const emptyEl = $('#vinos-empty');
   const occ = occupancyMap();
 
   const rows = [...state.vinos.values()]
     .filter((v) => vinoMatchesFilters(v, state.filters))
-    .sort((a, b) => norm(a.nombre).localeCompare(norm(b.nombre)) || a.anio - b.anio);
+    .sort((a, b) => norm(a.nombre).localeCompare(norm(b.nombre)) || (a.anio || 0) - (b.anio || 0));
 
   listEl.textContent = '';
 
@@ -1026,7 +1085,7 @@ function renderVinos() {
 
     const meta = document.createElement('div');
     meta.className = 'vino-meta';
-    const parts = [vino.bodega, String(vino.anio), vino.varietal];
+    const parts = [vino.bodega, vino.anio, vino.varietal].filter((p) => p != null && p !== '');
     if (vino.precioCompra != null) parts.push(fmtPrecio(vino.precioCompra));
     if (vino.fechaCompra) parts.push(fmtFecha(vino.fechaCompra));
     meta.textContent = parts.join(' · ');
@@ -1057,8 +1116,10 @@ function renderVinos() {
 
 function wireVinosView() {
   $('#f-q').addEventListener('input', (e) => { state.filters.q = e.target.value; renderVinos(); });
+  $('#f-bodega').addEventListener('change', (e) => { state.filters.bodega = e.target.value; renderVinos(); });
   $('#f-varietal').addEventListener('change', (e) => { state.filters.varietal = e.target.value; renderVinos(); });
   $('#f-anio').addEventListener('change', (e) => { state.filters.anio = e.target.value; renderVinos(); });
+  $('#f-clear').addEventListener('click', clearVinoFilters);
 
   $('#btn-add-vino').addEventListener('click', () => {
     state.pendingSlotId = null;
@@ -1289,12 +1350,11 @@ const ANIO_MIN = 1950;
 function buildAnioSelect(extra) {
   const select = $('#v-anio');
   select.textContent = '';
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = 'Elegí un año…';
-  placeholder.disabled = true;
-  placeholder.selected = true;
-  select.appendChild(placeholder);
+  // Año es opcional: la primera opción "Sin año" es válida y seleccionable.
+  const sinAnio = document.createElement('option');
+  sinAnio.value = '';
+  sinAnio.textContent = 'Sin año';
+  select.appendChild(sinAnio);
 
   const anios = [];
   for (let a = new Date().getFullYear() + 1; a >= ANIO_MIN; a--) anios.push(a);
@@ -1337,7 +1397,7 @@ function openVinoForm(vino, prefill) {
   // Se reconstruye en cada apertura para no acumular los años fuera de rango
   // que hayan entrado por `extra` al editar otros vinos.
   buildAnioSelect(vino ? vino.anio : null);
-  $('#v-anio').value = vino ? String(vino.anio) : '';
+  $('#v-anio').value = vino && vino.anio != null ? String(vino.anio) : '';
   $('#v-precio').value = vino && vino.precioCompra != null ? vino.precioCompra : '';
   $('#v-fecha').value = (vino && vino.fechaCompra) || '';
   syncFechaVacia();
@@ -1389,18 +1449,19 @@ function wireVinoForm() {
     if (!form.reportValidity()) return;
 
     const varietal = $('#v-varietal').value.trim();
-    const anio = parseInt($('#v-anio').value, 10);
-    if (!varietal || !Number.isInteger(anio)) return;
+    const anioRaw = $('#v-anio').value;
+    const anio = anioRaw === '' ? null : parseInt(anioRaw, 10);
+    if (!varietal || (anioRaw !== '' && !Number.isInteger(anio))) return;
 
     const esAlta = !state.editingVinoId; // capturado antes de cerrar el diálogo
     const vino = {
       id: state.editingVinoId || newId(),
       nombre: $('#v-nombre').value.trim(),
       bodega: $('#v-bodega').value.trim(),
-      anio,
       varietal,
     };
     if (!vino.nombre || !vino.bodega) return;
+    if (anio != null) vino.anio = anio; // año es opcional
     const sigla = $('#v-sigla').value.trim().slice(0, 3).toUpperCase();
     if (sigla) vino.sigla = sigla; // vacío → el hueco cae a la inicial del nombre
     const precio = $('#v-precio').value;
@@ -1747,7 +1808,7 @@ function validateBackup(data) {
     for (const campo of ['nombre', 'bodega', 'varietal']) {
       if (typeof v[campo] !== 'string' || !v[campo].trim()) return `Respaldo inválido: ${donde} no tiene ${campo}.`;
     }
-    if (!Number.isInteger(v.anio)) return `Respaldo inválido: ${donde} tiene un año inválido.`;
+    if (v.anio != null && !Number.isInteger(v.anio)) return `Respaldo inválido: ${donde} tiene un año inválido.`; // año opcional
     if (v.precioCompra != null && typeof v.precioCompra !== 'number') return `Respaldo inválido: ${donde} tiene un precio inválido.`;
     if (v.fechaCompra != null && typeof v.fechaCompra !== 'string') return `Respaldo inválido: ${donde} tiene una fecha inválida.`;
   }
@@ -1816,7 +1877,8 @@ async function importData(data, origen) {
       slotsStore.clear();
       coloresStore.clear(); // el respaldo es un snapshot completo: si es v1 (sin colores), quedan vacíos
       for (const v of data.vinos) {
-        const vino = { id: v.id, nombre: v.nombre, bodega: v.bodega, anio: v.anio, varietal: v.varietal };
+        const vino = { id: v.id, nombre: v.nombre, bodega: v.bodega, varietal: v.varietal };
+        if (v.anio != null) vino.anio = v.anio; // año opcional
         if (v.precioCompra != null) vino.precioCompra = v.precioCompra;
         if (v.fechaCompra != null) vino.fechaCompra = v.fechaCompra;
         vinosStore.put(vino);
