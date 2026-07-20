@@ -1,87 +1,49 @@
 /* ============================================================
    Cava — estilos
-   Estética minimalista estilo GitHub. Theming por CSS variables:
-   - Light por defecto.
-   - Dark vía [data-theme="dark"] (elección manual) o
-     prefers-color-scheme cuando [data-theme="auto"].
-   Los dos bloques dark deben mantenerse idénticos.
+   Estética cava/pub cálida. Tema único (sin claro/oscuro):
+   todos los tokens viven en un solo :root.
    ============================================================ */
 
 /* ---------- 1. Tokens ---------- */
 :root {
   color-scheme: light;
-  --bg: #ffffff;
-  --fg: #1f2328;
-  --muted: #59636e;
-  --border: #d0d7de;
-  --border-faint: rgba(208, 215, 222, 0.6);
-  --surface: #f6f8fa;
-  --surface-hover: #eef1f4;
-  --primary: #1f883d;
-  --primary-hover: #1a7f37;
+  --bg: #d6cfc0;             /* fondo gris-beige (cálido, claramente gris) */
+  --fg: #2a251f;
+  --muted: #6e655a;
+  --border: #c3baa8;
+  --border-faint: rgba(120, 108, 92, 0.28);
+  --surface: #e6e0d4;        /* tarjetas, botones, píldora de sección (un paso más claro que el fondo) */
+  --surface-hover: #dcd5c7;
+  --header-bg: #948d7e;      /* barra superior: mismo greige del fondo, más oscuro */
+  --primary: #8a2e43;        /* acento bordeaux, a tono cava/pub */
+  --primary-hover: #7a2739;
   --on-primary: #ffffff;
-  --danger: #d1242f;
-  --danger-solid: #cf222e;
-  --danger-bg: #ffebe9;
-  --ok-bg: #dafbe1;         /* hueco ocupado (verde sutil, tipo contribution graph) */
-  --ok-border: #aceebb;
-  --ok-fg: #1a7f37;
-  --tab-underline: #fd8c73; /* el subrayado coral de las tabs de un repo de GitHub */
+  --danger: #c4392b;
+  --danger-solid: #b5321f;
+  --danger-bg: #f7e4e1;
+  --ok-bg: #e7dfd0;          /* badge "ocupado" del panel de detalle (neutro cálido) */
+  --ok-border: #c9bca3;
+  --ok-fg: #6e5b3e;
+  --tab-underline: #b5822e;  /* subrayado de tabs, ámbar cálido */
   --focus: #0969da;
-  --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.2);
-  /* Estructura metálica del mueble: negra en ambos temas, pero en dark
-     necesita ser más profunda que --surface para que las barras se lean. */
-  --metal: #17191d;
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #0d1117;
-  --fg: #e6edf3;
-  --muted: #8b949e;
-  --border: #30363d;
-  --border-faint: rgba(48, 54, 61, 0.75);
-  --surface: #161b22;
-  --surface-hover: #1f2630;
-  --primary: #238636;
-  --primary-hover: #2ea043;
-  --on-primary: #ffffff;
-  --danger: #f85149;
-  --danger-solid: #da3633;
-  --danger-bg: rgba(248, 81, 73, 0.12);
-  --ok-bg: rgba(46, 160, 67, 0.22);
-  --ok-border: rgba(46, 160, 67, 0.5);
-  --ok-fg: #3fb950;
-  --tab-underline: #fd8c73;
-  --focus: #2f81f7;
-  --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.85);
-  --metal: #08090b;
-}
-
-@media (prefers-color-scheme: dark) {
-  [data-theme="auto"] {
-    color-scheme: dark;
-    --bg: #0d1117;
-    --fg: #e6edf3;
-    --muted: #8b949e;
-    --border: #30363d;
-    --border-faint: rgba(48, 54, 61, 0.75);
-    --surface: #161b22;
-    --surface-hover: #1f2630;
-    --primary: #238636;
-    --primary-hover: #2ea043;
-    --on-primary: #ffffff;
-    --danger: #f85149;
-    --danger-solid: #da3633;
-    --danger-bg: rgba(248, 81, 73, 0.12);
-    --ok-bg: rgba(46, 160, 67, 0.22);
-    --ok-border: rgba(46, 160, 67, 0.5);
-    --ok-fg: #3fb950;
-    --tab-underline: #fd8c73;
-    --focus: #2f81f7;
-    --shadow-lg: 0 8px 24px rgba(1, 4, 9, 0.85);
-    --metal: #08090b;
-  }
+  --shadow-lg: 0 8px 24px rgba(60, 45, 30, 0.25);
+  /* Diálogos (§9). --kb lo publica app.js §13 con el alto del teclado. */
+  --backdrop: rgba(38, 28, 16, 0.52); /* velo cálido, misma familia que --shadow-lg */
+  --dlg-w: 520px;                     /* ancho máximo, igual para los cuatro */
+  --dlg-pad: 16px;                    /* aire interno */
+  --dlg-edge: 20px;                   /* aire mínimo contra los bordes de la pantalla */
+  --kb: 0px;
+  /* Estructura metálica del mueble: negra. */
+  --metal: #0b0b0c;
+  /* Madera de los estantes: lo que asoma entre los huecos. Nogal agrisado:
+     misma luminosidad que un marrón cálido pero con menos saturación, para
+     que convive con el greige del fondo sin tirar a naranja. */
+  --wood: #634c39;
+  --wood-light: #6d5540;     /* tope del degradado de veta */
+  --wood-dark: #423224;
+  /* Hueco vacío: gris oscuro (como el viejo dark mode), tallado en la madera. */
+  --slot-empty-bg: #1c2027;
+  --slot-empty-border: rgba(255, 255, 255, 0.05);
 }
 
 /* ---------- 2. Base ---------- */
@@ -132,8 +94,8 @@ button { font: inherit; color: inherit; }
      bajo el notch (arriba y a los costados en horizontal). */
   margin: 0 calc(-1 * env(safe-area-inset-right)) 0 calc(-1 * env(safe-area-inset-left));
   padding: env(safe-area-inset-top) calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left));
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--header-bg);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 /* Botones directos del header (p. ej. "Volver"): no se estiran. */
@@ -144,6 +106,18 @@ button { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Botones del header (salvo el CTA primario bordeaux): chips tonales que se
+   integran con la barra oscura, en vez de blancos que saltan. */
+.app-header .btn:not(.btn--primary) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(0, 0, 0, 0.18);
+  color: var(--fg);
+}
+.app-header .btn:not(.btn--primary):active { background: rgba(0, 0, 0, 0.12); }
+@media (hover: hover) {
+  .app-header .btn:not(.btn--primary):hover { background: rgba(255, 255, 255, 0.24); }
 }
 
 /* ---------- 4. Botones ---------- */
@@ -203,6 +177,36 @@ button { font: inherit; color: inherit; }
    angostas (ver §12). */
 .btn .lbl-compact { display: none; }
 
+/* Botón ocupado (acción async en curso). color:transparent + spinner
+   absoluto en vez de cambiar el texto a "Guardando…": así el botón no
+   cambia de ancho y el header no se reacomoda en medio del toque — con
+   .lbl-full/.lbl-compact y el header ya justo a 360px, un cambio de ancho
+   ahí se nota. Sirve igual para los botones de ícono (SVG con
+   stroke="currentColor"). */
+.btn:disabled:not(.is-busy) { opacity: 0.5; }
+.btn.is-busy {
+  position: relative;
+  color: transparent;
+  --spin: var(--fg);
+}
+.btn--primary.is-busy, .btn--danger-solid.is-busy { --spin: var(--on-primary); }
+.btn.is-busy::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--spin);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .btn.is-busy::after { animation: none; border-top-color: var(--spin); opacity: 0.55; }
+}
+
 /* ---------- 5. Layout general ---------- */
 main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -210,8 +214,8 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 /* ---------- 7. Mapa ----------
    Las dos secciones (t1 y t2) viven lado a lado en un carrusel horizontal
    con scroll-snap: cada panel es una "página" del ancho exacto del área
-   del mapa; se pasa de una a otra con swipe o con el selector flotante
-   (§7b, lo maneja app.js §8).
+   del mapa; se pasa de una a otra con swipe o con los chevrones flotantes
+   (.map-nav, los maneja app.js §8).
 
    Geometría: cada hueco es un CUADRADO exacto de lado --slot, el mismo
    en ambas secciones. Los módulos se dimensionan por contenido (tracks
@@ -220,27 +224,73 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
    una página; si no da, actúa el mínimo del clamp y el área scrollea.
    "Chrome" de un módulo = 3px padding + 1px borde por lado = 8px.
    Marco del mueble = 8px padding + 1px borde por lado = 18px por eje.
-   El padding de página (10px 12px 12px) vive en .map-panel — el área en
+   El padding de página (11px 12px) vive en .map-panel — el área en
    sí no tiene padding para que cada página mida exactamente 100cqw.
    Restricciones con gap = 9px (s = lado del cuadrado; el gap iguala el
    grosor visible del marco: 8px de padding + 1px de borde). Los dos
    muebles miden lo mismo de alto (las filas ciegas espejan a la secc 1):
-   - Secc 1 ancho: 24+18px + 6 mód × (4s + 8) + 5·9      → s ≤ (100cqw − 135) / 24
+   Las constantes de ANCHO suman además 96px (48 por lado): la reserva de
+   margen para que los chevrones flotantes no tapen la sección centrada:
+   - Secc 1 ancho: 24+18+96px + 6 mód × (4s + 8) + 5·9   → s ≤ (100cqw − 231) / 24
    - Alto (ambas): 22+18px + 3 filas (3s + 8) + (5s + 8) + 3·9 → s ≤ (100cqh − 99) / 14
-   - Secc 2 ancho: 24+18px + 5 mód × (5s + 8) + 4·9      → s ≤ (100cqw − 118) / 25
+   - Secc 2 ancho: 24+18+96px + 5 mód × (5s + 8) + 4·9   → s ≤ (100cqw − 214) / 25
    Donde ni así entra (iPhone: 24 columnas de huecos no caben en < 700px a
    tamaño usable), §12 pasa el área a "modo paneo": cada panel toma el
    tamaño de su contenido, sin snap, y --slot-min sube para que el hueco
-   siga siendo tocable; el selector salta por offset real del panel
+   siga siendo tocable; los chevrones saltan por offset real del panel
    (app.js §8). El breakpoint de §12 garantiza que en modo ancho el clamp
    nunca toque su mínimo: la sección siempre entra completa (la cuenta
-   descuenta header ~48px y subheader ~46px del alto de la ventana).       */
+   descuenta header ~48px y subheader ~58px del alto; la reserva de los
+   chevrones ya vive en las constantes de ancho).                          */
+/* Chevrones flotantes: absolutos sobre los bordes del carrusel, desnudos
+   (sin fondo, borde ni carril). El clamp de --slot reserva 48px por lado
+   (constantes de ancho +96) para que, con la sección centrada en modo
+   ancho, el chevron caiga siempre sobre margen vacío y no tape huecos.
+   En modo paneo la tabla sí puede pasarle por debajo. */
+.map-carousel {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.map-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 96px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  opacity: 0.6;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: opacity 0.12s ease;
+}
+.map-nav--prev { left: 0; }
+.map-nav--next { right: 0; }
+.map-nav:active { opacity: 1; }
+.map-nav.is-off { visibility: hidden; }
+@media (hover: hover) {
+  .map-nav:hover { opacity: 1; }
+}
+
 .map-area {
   --gap: 9px; /* barras internas del mueble = grosor visible del marco */
   --slot-min: 22px;
   --slot: 34px; /* fallback si el navegador no soporta container queries */
+  /* offsetParent de los paneles: panel2.offsetLeft debe medirse en
+     coordenadas del scroller, no del carrusel (app.js §8). */
+  position: relative;
   flex: 1;
-  min-height: 0;
+  min-width: 0;
   display: flex;
   overflow: auto;
   overscroll-behavior: contain; /* sin pull-to-refresh ni "back" por swipe en iOS */
@@ -255,9 +305,9 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .map-area {
     container-type: size;
     --slot: clamp(var(--slot-min),
-                  min((100cqw - 135px) / 24,
+                  min((100cqw - 231px) / 24,
                       (100cqh - 99px) / 14,
-                      (100cqw - 118px) / 25),
+                      (100cqw - 214px) / 25),
                   72px);
   }
 }
@@ -265,7 +315,9 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .map-panel {
   flex: 0 0 100%;
   height: 100%;
-  padding: 10px 12px 12px;
+  /* Simétrico a propósito: así el mueble centrado y el chevron flotante
+     (top 50%) comparten el mismo centro vertical exacto. */
+  padding: 11px 12px;
   scroll-snap-align: start;
   /* El mueble queda centrado en su página. */
   display: flex;
@@ -275,12 +327,14 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 /* ---------- 7b. Subheader del mapa: búsqueda + filtros ----------
    Atenúan en el mapa los huecos cuyo vino no coincide (.slot--dim, ver §7c
-   y app.js §8). Una sola línea: ~46px (50px en touch). */
+   y app.js §8). Una sola línea: ~58px (62px en touch), mismo padding que la
+   toolbar del catálogo. El alto no está cableado en ningún cálculo: el clamp
+   de --slot mide 100cqh de .map-area en vivo, así que el mapa se reacomoda. */
 .map-subheader {
   flex: none;
   display: flex;
   align-items: center;
-  padding: 6px 12px;
+  padding: 12px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
@@ -291,48 +345,9 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   align-items: center;
   gap: 8px;
 }
-.map-filters input[type="search"] { flex: 1; min-width: 140px; max-width: 340px; }
-
-/* Selector flotante de sección: píldora segmentada centrada sobre el borde
-   inferior del mapa. El segmento activo usa un anillo inset (no un borde)
-   para que el ancho no salte al cambiar de sección. */
-#view-cava { position: relative; }
-.map-switch {
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
-  transform: translateX(-50%);
-  z-index: 2;
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  box-shadow: var(--shadow-lg);
-}
-.map-switch-btn {
-  border: 0;
-  background: none;
-  border-radius: 999px;
-  min-height: 36px;
-  padding: 5px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--muted);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.map-switch-btn[aria-current="true"] {
-  background: var(--bg);
-  color: var(--fg);
-  font-weight: 600;
-  box-shadow: inset 0 0 0 1px var(--border);
-}
-@media (hover: hover) {
-  .map-switch-btn:not([aria-current="true"]):hover { color: var(--fg); }
-}
+/* Sin tope de ancho: el buscador absorbe el sobrante del renglón igual que
+   en la toolbar del catálogo, así los tres controles ocupan todo el ancho. */
+.map-filters input[type="search"] { flex: 1; min-width: 180px; }
 
 /* El "mueble": el fondo metálico asoma por los gaps como las barras
    internas de la estructura, y el padding es el marco exterior. */
@@ -365,10 +380,49 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   gap: 0;
   align-content: center;
   justify-content: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  /* Estante de madera: el tono asoma entre los huecos (inset de .slot-v) y
+     como marco del módulo (padding). Veta sutil con un degradado vertical. */
+  background: linear-gradient(180deg, var(--wood-light), var(--wood));
+  border: 1px solid var(--wood-dark);
   border-radius: 2px; /* sharp, a tono con la estructura del mueble */
-  padding: 3px;
+  padding: 4px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Heladera: la columna final de la cava secundaria. Cuerpo gris
+   (electrodoméstico) en vez de madera; el tono asoma entre los huecos y
+   como marco del módulo. */
+.mod--heladera {
+  background: linear-gradient(180deg, #c7ccd2, #b0b6be);
+  border-color: #8f959d;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+/* Freezer: banda superior sin huecos (ocupa la primera fila del grid del
+   módulo). Sin puerta: solo una línea divisoria minimalista con la zona
+   de vinos. */
+.mod-freezer {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  /* La línea sube dentro de la banda del freezer y deja aire debajo antes de
+     que arranquen los huecos de vino. */
+  margin-bottom: calc(var(--slot) * 0.4);
+  border-bottom: 2px solid #7d838b; /* línea divisoria freezer / heladera */
+}
+
+/* Minibar: submódulo gris bien oscuro que ocupa las primeras columnas de un
+   módulo (todas sus filas) y contiene su propia subcuadrícula de huecos. El
+   margen derecho, más ancho que el izquierdo, deja a la columna de vinos el
+   mismo marco de madera de los dos lados. */
+.mod-minibar {
+  display: grid;
+  gap: 0;
+  padding: 2px;
+  margin: 2px 4px 2px 2px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #1b1e24, #101216);
+  border: 1px solid #05070b;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
   min-width: 0;
   min-height: 0;
 }
@@ -391,21 +445,33 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .slot-v {
   position: absolute;
   inset: 2px;
-  border: 1px solid var(--border-faint);
+  border: 1px solid var(--slot-empty-border);
   border-radius: 3px;
+  background: var(--slot-empty-bg);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); /* hueco tallado en la madera */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
   line-height: 1;
-  color: transparent;
+  color: #fff;
+  overflow: hidden;
   transition: transform 0.06s ease, opacity 0.12s ease;
 }
-.slot.filled .slot-v {
-  background: var(--ok-bg);
-  border-color: var(--ok-border);
-  color: var(--ok-fg);
+/* Cuando hay vino, el color (fondo/borde/texto) lo pinta app.js inline según
+   el varietal; acá solo va la tipografía de las dos líneas. */
+.slot-sigla {
+  font-weight: 700;
+  line-height: 1;
+  font-size: clamp(9px, calc(var(--slot) * 0.34), 22px);
+}
+.slot-anio {
+  margin-top: 1px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0.82;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(7px, calc(var(--slot) * 0.2), 12px);
 }
 /* §7c — Filtro del mapa activo: los huecos cuyo vino no coincide (y los
    vacíos) se atenúan para que los matches salten a la vista. La clase va
@@ -435,6 +501,17 @@ input[type="search"], input[type="text"], input[type="number"], input[type="date
   border-radius: 6px;
 }
 input[type="search"] { -webkit-appearance: none; appearance: none; }
+
+/* Sin flechitas en los numéricos (año, precio): ocupan lugar dentro del
+   campo y no sirven para nada acá — un año se tipea, no se llega a 2018 a
+   clicks. El teclado numérico en touch lo da el inputmode del HTML, así que
+   sacarlas no cambia nada en el iPhone. */
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 
 .vinos-scroll {
   flex: 1;
@@ -486,32 +563,87 @@ input[type="search"] { -webkit-appearance: none; appearance: none; }
 
 .empty-note { color: var(--muted); text-align: center; padding: 40px 12px; }
 
-/* ---------- 9. Diálogos ---------- */
+/* ---------- 9. Diálogos ----------
+   Centrados en el área ÚTIL: los cuatro insets descuentan notch y home
+   indicator, y el margin:auto que el UA ya trae para dialog:modal centra
+   dentro de ese rectángulo (no debajo del notch).
+
+   Teclado en pantalla — el problema que antes se resolvía anclando arriba
+   (margin-top: 7dvh): en iOS el teclado NO achica el viewport de layout,
+   así que 100dvh y los position:fixed siguen igual y un diálogo centrado
+   queda tapado. Lo único que lo refleja es visualViewport: app.js §13
+   publica esa diferencia en --kb y acá se descuenta del inset de abajo y
+   del max-height. El diálogo se recentra y se encoge sobre el teclado, y
+   el cuerpo scrollea. Sin visualViewport --kb queda en 0: centrado normal
+   con cuerpo scrolleable, nunca peor que antes.
+
+   NO agregar interactiveWidget=resizes-content al meta viewport: iOS lo
+   ignora, y donde sí funciona achicaría el viewport al enfocar el buscador
+   del mapa, recalculando --slot (§7) y reacomodando el mueble entero
+   mientras se tipea.                                                      */
 dialog {
+  top: env(safe-area-inset-top);
+  right: env(safe-area-inset-right);
+  bottom: calc(env(safe-area-inset-bottom) + var(--kb, 0px));
+  left: env(safe-area-inset-left);
+  margin: auto;
+  width: min(var(--dlg-w), calc(100vw - env(safe-area-inset-left)
+                               - env(safe-area-inset-right) - var(--dlg-edge) * 2));
+  /* Los % de max-height se resuelven contra el viewport entero (los insets
+     no cambian la base del porcentaje), así que la cuenta va explícita. */
+  max-height: calc(100vh - var(--dlg-edge) * 2); /* fallback */
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+                          - var(--kb, 0px) - var(--dlg-edge) * 2);
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg);
   color: var(--fg);
-  width: min(440px, calc(100vw - 40px));
-  /* Anclado arriba: en iPad el teclado en pantalla no tapa los inputs
-     de un diálogo centrado verticalmente. */
-  margin: 7vh auto auto;
-  margin-top: 7dvh;
   box-shadow: var(--shadow-lg);
+  overflow: hidden; /* recorta el scroll del cuerpo contra el radio */
 }
-dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
+/* Scopeado a [open] a propósito: una regla de autor sobre `dialog` pisa el
+   display:none del UA y mostraría los cuatro diálogos cerrados. */
+dialog[open] { display: flex; flex-direction: column; }
 
-.dlg-body { padding: 16px; }
+/* Marrón cálido, no el azul-negro de antes: sobre el greige del tema un
+   velo frío vuelve gris verdosa toda la app justo al abrir un diálogo. */
+dialog::backdrop { background: var(--backdrop); }
+
+/* El cuerpo es el único contenedor con scroll: así ningún diálogo puede
+   desbordar el viewport, pase lo que pase con el contenido o el teclado. */
+.dlg-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--dlg-pad) var(--dlg-pad);
+}
+
+/* Cabecera pegajosa: en el diálogo de configuración (el único largo de
+   verdad) el título y la ✕ quedan siempre a mano. Fondo propio porque el
+   contenido le pasa por debajo, y el padding de arriba del cuerpo lo
+   aporta ella para que al pegarse no quede una franja de aire. */
 .dlg-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 2px;
+  padding: var(--dlg-pad) 0 10px;
+  margin-bottom: 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-faint);
 }
-.dlg-head h2 { margin: 0; font-size: 16px; }
-.dlg-sub { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.dlg-head h2 { margin: 0; font-size: 16px; line-height: 1.3; }
+
+.dlg-sub { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+/* El subtítulo pertenece al título: se le pega en vez de flotar en el medio. */
+.dlg-head + .dlg-sub { margin-top: -7px; }
+
 .dlg-actions {
   display: flex;
   justify-content: flex-end;
@@ -519,7 +651,25 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
   gap: 8px;
   margin-top: 16px;
 }
-.confirm-msg { margin: 4px 0 0; }
+/* Bloque de acciones FINAL de un diálogo (no los intercalados de #slot-wine
+   ni los del respaldo manual): hairline y un poco más de aire, para que el
+   botón primario no quede pegado al último campo. */
+.dlg-body > .dlg-actions,
+.dlg-body > form > .dlg-actions {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-faint);
+}
+
+/* #dlg-confirm no lleva .dlg-head a propósito: su título YA es la pregunta
+   («¿Borrar «X»?»), y una ✕ duplicaría el botón Cancelar. Lo que lo integra
+   al sistema es el ritmo, no la estructura: mismo padding, misma hairline
+   sobre las acciones. Como no hay cabecera, el aire de arriba lo pone el
+   cuerpo. */
+#dlg-confirm .dlg-body { padding-top: var(--dlg-pad); }
+.confirm-title { margin: 0 0 6px; font-size: 16px; line-height: 1.3; }
+.confirm-msg { margin: 0; font-size: 15px; line-height: 1.5; }
+.confirm-detail { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 
 .wine-card {
   display: flex;
@@ -531,20 +681,40 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
   border-radius: 6px;
 }
 
-#slot-picker input[type="search"] { width: 100%; }
+/* Selector de vinos: el cuerpo NO scrollea, scrollea la lista. Así la lista
+   se mide contra el alto real del diálogo (antes era 40dvh, una fracción
+   del viewport) y no quedan dos scrolls anidados peleándose el momentum en
+   iOS. Con el teclado abierto --kb encoge el diálogo, la lista se encoge
+   con él, y buscador + resultados quedan visibles arriba del teclado. */
+#dlg-slot .dlg-body { display: flex; flex-direction: column; overflow: hidden; }
+#slot-picker { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
+#slot-picker input[type="search"] { flex: none; width: 100%; }
 .picker-list {
   list-style: none;
   margin: 8px 0 0;
   padding: 0;
-  max-height: 40vh;
-  max-height: 40dvh;
+  /* Crece con el contenido y se encoge cuando el diálogo toca su max-height. */
+  flex: 0 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border);
   border-radius: 6px;
 }
 .picker-list li + li { border-top: 1px solid var(--border); }
-.picker-list button {
+
+/* Fila partida: elegir el vino ocupa todo el ancho salvo el botón «Editar».
+   El li es flex y el bloque de elegir crece; el de editar conserva su
+   tamaño natural. La fila de «Crear vino nuevo» no es .picker-row, así que
+   sigue siendo un botón de ancho completo. */
+.picker-row { display: flex; align-items: center; gap: 8px; padding-right: 8px; }
+.picker-pick { flex: 1; min-width: 0; }
+.picker-edit { flex: none; }
+
+/* Los botones "desnudos" del selector (elegir vino y crear). El de editar
+   queda afuera: es un .btn normal y conserva su borde y su fondo. */
+.picker-list button:not(.btn) {
   display: block;
   width: 100%;
   text-align: left;
@@ -555,14 +725,58 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-.picker-list button:active { background: var(--surface); }
+.picker-list button:not(.btn):active { background: var(--surface); }
 @media (hover: hover) {
-  .picker-list button:hover { background: var(--surface); }
+  .picker-list button:not(.btn):hover { background: var(--surface); }
 }
 .picker-name { display: block; font-weight: 600; }
 .picker-sub { display: block; color: var(--muted); font-size: 12.5px; }
 .picker-create { color: var(--primary); font-weight: 600; }
 .picker-note { color: var(--muted); font-size: 12.5px; padding: 8px 12px; margin: 0; }
+
+/* Entrada del diálogo: fundido del velo + un empujón mínimo. @starting-style
+   y transition-behavior:allow-discrete permiten animar un elemento que pasa
+   de display:none al top layer sin una línea de JS — importante acá, porque
+   confirmDialog() resuelve su promesa en el evento `close` y un cierre
+   diferido por JS obligaría a tocar ese timing. Donde no haya soporte
+   (Safari < 17.4) el diálogo aparece de golpe: degrada, no rompe. */
+@media (prefers-reduced-motion: no-preference) {
+  dialog {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+    transition: opacity 160ms ease-out,
+                transform 180ms cubic-bezier(0.2, 0.75, 0.3, 1),
+                overlay 180ms allow-discrete,
+                display 180ms allow-discrete;
+  }
+  dialog[open] { opacity: 1; transform: none; }
+  @starting-style {
+    dialog[open] { opacity: 0; transform: translateY(6px) scale(0.985); }
+  }
+
+  dialog::backdrop {
+    opacity: 0;
+    transition: opacity 180ms ease-out,
+                overlay 180ms allow-discrete,
+                display 180ms allow-discrete;
+  }
+  dialog[open]::backdrop { opacity: 1; }
+  @starting-style {
+    dialog[open]::backdrop { opacity: 0; }
+  }
+}
+
+/* OPCIONAL — probalo en el iPhone más viejo antes de dejarlo. El mapa son
+   cientos de nodos y un backdrop-filter obliga al compositor a rasterizar
+   la pantalla entera en cada cuadro del fundido. Si la apertura se
+   entrecorta, borrá este bloque: el velo plano ya cumple. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  dialog::backdrop {
+    -webkit-backdrop-filter: blur(3px) saturate(0.92);
+    backdrop-filter: blur(3px) saturate(0.92);
+    background: rgba(38, 28, 16, 0.40); /* con desenfoque hace falta menos velo */
+  }
+}
 
 /* ---------- 10. Formulario ---------- */
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; min-width: 0; }
@@ -574,49 +788,147 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+/* Nombre ancho + sigla angosta. El input necesita 3 caracteres, pero la
+   columna la fija el label «Sigla (máx. 3)»: con menos, se parte en dos
+   renglones y descuadra la fila. Ese ancho sale del nombre, que va sobrado. */
+.field-row--nombre { grid-template-columns: 1fr 8.5em; }
+
+/* La sigla siempre en mayúsculas: acá se ve mientras se tipea, y app.js lo
+   aplica al valor real. El placeholder queda exento a propósito: con el
+   nombre vacío dice «Inicial del nombre», que en mayúsculas grita. */
+#v-sigla { text-transform: uppercase; }
+#v-sigla::placeholder { text-transform: none; }
+
+/* ---- Campo de fecha ----
+   El panel del calendario que se despliega es chrome del navegador (en iOS,
+   la rueda nativa): no se puede estilar desde acá, y reemplazarlo por uno
+   propio perdería la rueda, que en el teléfono es mejor. Lo que sí se
+   estiliza es el campo, que viene con el ícono negro y el resaltado azul
+   del sistema — los dos desentonan con el greige y el bordeaux del tema. */
+input[type="date"] { width: 100%; }
+
+/* Ícono propio, mismo trazo que los SVG del header (16px, stroke 1.5). El
+   color va cableado en el data URI porque ahí no llegan las variables CSS;
+   el tono se gradúa con opacity. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  margin-left: 6px;
+  cursor: pointer;
+  opacity: 0.5;
+  background-repeat: no-repeat;
+  background-size: 17px 17px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%232a251f' stroke-width='1.5' stroke-linecap='round'%3E%3Crect x='2.25' y='3.25' width='11.5' height='10.5' rx='1.5'/%3E%3Cpath d='M2.25 6.75h11.5M5.5 1.75v2.5M10.5 1.75v2.5'/%3E%3C/svg%3E");
+  transition: opacity 0.12s ease;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]:focus-within::-webkit-calendar-picker-indicator { opacity: 0.9; }
+
+input[type="date"]::-webkit-datetime-edit-text { color: var(--muted); padding: 0 1px; }
+
+/* Segmento enfocado en bordeaux en vez del azul del sistema. OJO: probado en
+   Chromium y NO tiene efecto (ahí el resaltado es chrome del navegador);
+   se deja porque en WebKit sí se respeta y no molesta donde no aplica. En
+   iOS es indistinto: el campo no tiene segmentos editables, abre la rueda. */
+input[type="date"]::-webkit-datetime-edit-day-field:focus,
+input[type="date"]::-webkit-datetime-edit-month-field:focus,
+input[type="date"]::-webkit-datetime-edit-year-field:focus {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: 3px;
+  outline: none;
+}
+
+/* Vacío = «dd/mm/yyyy», que es un placeholder, no un valor: va atenuado como
+   los ::placeholder del resto del formulario. No hay selector CSS para el
+   input date vacío, así que app.js pone .has-value. */
+input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted); }
 
 /* Diálogo de configuración (⚙): nota de ayuda y sección de respaldo manual. */
 .cfg-note { color: var(--muted); font-size: 12.5px; margin: 0 0 4px; }
 .cfg-manual {
-  margin-top: 16px;
-  padding-top: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
   border-top: 1px solid var(--border);
 }
 .cfg-manual h3 { margin: 0 0 10px; font-size: 13px; }
 .cfg-manual .dlg-actions { justify-content: flex-start; margin-top: 0; }
 
-/* ---------- 11. Toast ---------- */
+/* ---------- 11. Toast ----------
+   Abajo al centro: fuera del pulgar sobre el mapa y sin tapar el header.
+   Superficie espresso en vez del casi-negro del texto, con una barra de
+   acento a la izquierda que codifica el tipo (ámbar / rojo) — sobre el
+   greige del tema un rectángulo negro plano se lee como un error del
+   navegador, no como parte de la app.
+
+   Entrada y salida asimétricas a propósito: entra en 280ms con una curva
+   que frena suave, sale en 160ms seca. Esa diferencia es lo que hace que
+   se sienta intencional en vez de un parpadeo. */
 .toast {
+  --toast-accent: var(--tab-underline);
   position: fixed;
-  left: 50%;
-  /* Por encima del selector flotante del mapa (§7b), que vive centrado
-     abajo: si no, el toast lo taparía a medias. */
-  bottom: calc(68px + env(safe-area-inset-bottom));
-  transform: translateX(-50%) translateY(8px);
-  max-width: min(90vw, 480px);
-  padding: 8px 16px;
-  background: var(--fg);
-  color: var(--bg);
-  border-radius: 6px;
+  /* left/right:0 + margin auto en vez de left:50% + translateX: con solo
+     left:50% el ancho disponible es del centro al borde derecho, así que el
+     max-width nunca llegaba a aplicarse y los mensajes largos se partían en
+     una columna angosta. Además deja el transform libre para la animación. */
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  max-width: min(92vw, 460px);
+  padding: 11px 16px 11px 14px;
+  background: #2e2620;
+  color: #f2ebdd;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-left: 3px solid var(--toast-accent);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(30, 20, 10, 0.35);
   font-size: 13.5px;
-  text-align: center;
+  line-height: 1.4;
+  text-align: left;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
   z-index: 50;
+  /* Salida */
+  transform: translateY(6px) scale(0.98);
+  transition: opacity 160ms ease-in, transform 160ms ease-in;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast.err { background: var(--danger-solid); color: #ffffff; }
+.toast.show {
+  opacity: 1;
+  transform: none;
+  /* Entrada */
+  transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast--err {
+  --toast-accent: var(--danger-solid);
+  background: #3a201a;
+  color: #ffe9e4;
+}
+/* El error se puede tocar para sacarlo antes de tiempo; el neutro no, que
+   dura poco y no debe robarle toques al mapa. */
+.toast--err.show { pointer-events: auto; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast, .toast.show {
+    transform: none;
+    transition: opacity 120ms linear;
+  }
+}
 
 /* ---------- 12. Responsive: pantallas chicas y touch ----------
    El breakpoint cubre iPhone en vertical (ancho) y en horizontal (alto).
    Por debajo, el mapa pasa al "modo paneo" descripto en §7: los paneles
    toman el tamaño de su contenido y se panea dentro de la sección. El snap
    obligatorio se apaga porque con páginas más anchas que el viewport pelea
-   contra el paneo (el scroll rebota a los bordes de página). El piso de
-   alto es 540px: el modo ancho necesita cqh ≥ 14·22+99 = 407px y el área
-   pierde header (~48px) + subheader (~46px) respecto de la ventana. */
-@media (max-width: 700px), (max-height: 540px) {
+   contra el paneo (el scroll rebota a los bordes de página). Pisos: de
+   ancho 767px (el modo ancho necesita cqw ≥ 25·22+214 = 764px — la reserva
+   de los chevrones ya está en la constante; el iPad vertical de 768 entra
+   justo); de alto 540px (necesita cqh ≥ 14·22+99 = 407px y el área pierde
+   header ~48px + subheader ~58px = 513px, así que 540 sigue alcanzando). */
+@media (max-width: 767px), (max-height: 540px) {
   .map-area {
     --slot-min: 30px; /* piso táctil: en modo paneo no hace falta que entre */
     scroll-snap-type: none;
@@ -643,7 +955,7 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
 @media (max-width: 700px) {
   .toolbar select { flex: 1; min-width: 140px; }
   #btn-add-vino { flex: 1; }
-  .map-filters input[type="search"] { max-width: none; min-width: 110px; }
+  .map-filters input[type="search"] { min-width: 110px; }
   .map-filters select { flex: 1; min-width: 0; }
 }
 
@@ -652,7 +964,6 @@ dialog::backdrop { background: rgba(1, 4, 9, 0.5); }
 @media (pointer: coarse) {
   .btn { min-height: 38px; }
   .btn--sm { min-height: 34px; }
-  .map-switch-btn { min-height: 40px; }
   input[type="search"], input[type="text"], input[type="number"], input[type="date"], select {
     min-height: 38px;
     font-size: 16px;
