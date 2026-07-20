@@ -1127,13 +1127,12 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
    de apilarse de a uno, y la acción primaria ocupa el renglón completo.
    Subheader del mapa: los tres controles reparten el único renglón. */
 @media (max-width: 700px) {
-  /* Renglones parejos en catálogo y subheader del mapa: buscador solo (1),
-     los tres selects exactos en el siguiente (2), y los botones en el que
-     sigue (3). Las bases con calc fuerzan el corte de fila justo (gap = 8px):
-     3 selects + 2 gaps = 100%, 2 botones + 1 gap = 100%. */
+  /* Renglones parejos en catálogo y subheader del mapa: buscador solo (1) y los
+     cuatro filtros en una grilla 2×2 (2). Las bases con calc fuerzan el corte de
+     fila justo (gap = 8px): 2 por renglón + 1 gap = 100%. */
   .toolbar input[type="search"],
   .map-filters input[type="search"] { flex: 1 1 100%; }
-  .toolbar select, .map-filters select { flex: 1 1 calc((100% - 16px) / 3); width: auto; min-width: 0; }
+  .toolbar select, .map-filters select { flex: 1 1 calc((100% - 8px) / 2); width: auto; min-width: 0; }
   #f-clear, #mf-clear { flex: 1 1 100%; }
   .sortbar select { flex: 1 1 auto; max-width: none; }
   /* Acción primaria flotante en el borde inferior del celular (por encima de la

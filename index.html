@@ -60,6 +60,9 @@
           <select id="mf-bodega" aria-label="Filtrar mapa por bodega">
             <option value="">Todas las bodegas</option>
           </select>
+          <select id="mf-origen" aria-label="Filtrar mapa por origen">
+            <option value="">Todos los orígenes</option>
+          </select>
           <select id="mf-varietal" aria-label="Filtrar mapa por varietal">
             <option value="">Todos los varietales</option>
           </select>
@@ -100,6 +103,9 @@
         <input type="search" id="f-q" placeholder="Buscar vino o bodega…" autocomplete="off">
         <select id="f-bodega" aria-label="Filtrar por bodega">
           <option value="">Todas las bodegas</option>
+        </select>
+        <select id="f-origen" aria-label="Filtrar por origen">
+          <option value="">Todos los orígenes</option>
         </select>
         <select id="f-varietal" aria-label="Filtrar por varietal">
           <option value="">Todos los varietales</option>
@@ -185,6 +191,10 @@
         <div class="field">
           <label for="v-bodega">Bodega</label>
           <input type="text" id="v-bodega" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="v-origen">Origen <span class="opt">(opcional)</span></label>
+          <input type="text" id="v-origen" autocomplete="off">
         </div>
         <div class="field-row field-row--varietal">
           <div class="field">
