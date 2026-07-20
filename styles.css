@@ -94,41 +94,48 @@ button { font: inherit; color: inherit; }
    scrollbar-color es el estándar y ::-webkit-scrollbar lo que entienden
    Safari y los Chrome viejos. En iOS no aplica: ahí la barra es flotante y
    la dibuja el sistema. */
-.map-area, .vinos-scroll, .dlg-body, .picker-list {
+.map-area, .vinos-scroll, .dlg-body, .picker-list, .combo-panel {
   scrollbar-width: thin;
   scrollbar-color: #a89c88 var(--bg);
 }
+.combo-panel { scrollbar-color: #a89c88 var(--surface); } /* el panel es --surface, no --bg */
 .map-area::-webkit-scrollbar,
 .vinos-scroll::-webkit-scrollbar,
 .dlg-body::-webkit-scrollbar,
-.picker-list::-webkit-scrollbar { width: 11px; height: 11px; }
+.picker-list::-webkit-scrollbar,
+.combo-panel::-webkit-scrollbar { width: 11px; height: 11px; }
 
 .map-area::-webkit-scrollbar-track,
 .vinos-scroll::-webkit-scrollbar-track,
 .dlg-body::-webkit-scrollbar-track,
 .picker-list::-webkit-scrollbar-track { background: var(--bg); }
+.combo-panel::-webkit-scrollbar-track { background: var(--surface); }
 
 /* El borde del color del fondo + background-clip deja aire alrededor del
    pulgar, así no toca los bordes del carril. */
 .map-area::-webkit-scrollbar-thumb,
 .vinos-scroll::-webkit-scrollbar-thumb,
 .dlg-body::-webkit-scrollbar-thumb,
-.picker-list::-webkit-scrollbar-thumb {
+.picker-list::-webkit-scrollbar-thumb,
+.combo-panel::-webkit-scrollbar-thumb {
   background: #a89c88;
   border: 2px solid var(--bg);
   background-clip: padding-box;
   border-radius: 999px;
 }
+.combo-panel::-webkit-scrollbar-thumb { border-color: var(--surface); } /* el aire toma el color del panel */
 @media (hover: hover) {
   .map-area::-webkit-scrollbar-thumb:hover,
   .vinos-scroll::-webkit-scrollbar-thumb:hover,
   .dlg-body::-webkit-scrollbar-thumb:hover,
-  .picker-list::-webkit-scrollbar-thumb:hover { background: #8d8170; }
+  .picker-list::-webkit-scrollbar-thumb:hover,
+  .combo-panel::-webkit-scrollbar-thumb:hover { background: #8d8170; }
 }
 .map-area::-webkit-scrollbar-corner,
 .vinos-scroll::-webkit-scrollbar-corner,
 .dlg-body::-webkit-scrollbar-corner,
 .picker-list::-webkit-scrollbar-corner { background: var(--bg); }
+.combo-panel::-webkit-scrollbar-corner { background: var(--surface); }
 
 /* ---------- 3. Header ----------
    Una sola barra: el botón "Volver" a la izquierda cuando se ve el
@@ -841,7 +848,56 @@ dialog::backdrop { background: var(--backdrop); }
 }
 
 /* ---------- 10. Formulario ---------- */
-.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; min-width: 0; }
+.field { position: relative; display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; min-width: 0; }
+
+/* ---------- Combobox: autocompletado de Bodega y Varietal (§11 app.js) ----------
+   Reemplaza al <datalist> nativo. Es position:fixed y el JS le fija
+   left/width/top-o-bottom/max-height contra la ventana, así flota por encima
+   del modal (sin que lo recorte su overflow) y abre debajo del input. */
+.combo-panel {
+  position: fixed;
+  z-index: 60;
+  max-height: 320px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.combo-panel[hidden] { display: none; }
+
+.combo-opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 15px;
+  line-height: 1.25;
+  color: var(--fg);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Un solo estado visual, compartido por hover (el JS marca is-active al pasar
+   el mouse) y teclado: un tinte bordeaux suave, sin bordes ni acentos. */
+.combo-opt.is-active {
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+}
+.combo-opt-label { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.combo-dot {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid rgba(38, 26, 12, 0.35);
+}
+.combo-hint { padding: 9px 10px; font-size: 13px; color: var(--muted); }
+.combo-hint b { color: var(--fg); font-weight: 600; }
 .field label { font-size: 13px; font-weight: 600; }
 .field label .opt { font-weight: 400; color: var(--muted); }
 .field input, .field select { width: 100%; }
@@ -854,6 +910,20 @@ dialog::backdrop { background: var(--backdrop); }
    columna la fija el label «Sigla (máx. 3)»: con menos, se parte en dos
    renglones y descuadra la fila. Ese ancho sale del nombre, que va sobrado. */
 .field-row--nombre { grid-template-columns: 1fr 8.5em; }
+
+/* Año + Varietal + un chip de color angosto (solo la muestra, sin label ancho). */
+.field-row--varietal { grid-template-columns: 1fr 1.4fr 3em; }
+.field--color input[type="color"] {
+  width: 100%;
+  min-height: 34px;
+  padding: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.field--color input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.field--color input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
 
 /* La sigla siempre en mayúsculas: acá se ve mientras se tipea, y app.js lo
    aplica al valor real. El placeholder queda exento a propósito: con el

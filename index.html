@@ -163,19 +163,19 @@
           <label for="v-bodega">Bodega</label>
           <input type="text" id="v-bodega" required autocomplete="off">
         </div>
-        <div class="field-row">
+        <div class="field-row field-row--varietal">
           <div class="field">
             <label for="v-anio">Año</label>
             <select id="v-anio" required></select>
           </div>
           <div class="field">
             <label for="v-varietal">Varietal</label>
-            <select id="v-varietal" required></select>
+            <input type="text" id="v-varietal" required autocomplete="off" placeholder="Elegí o escribí uno">
           </div>
-        </div>
-        <div class="field" id="field-varietal-otro" hidden>
-          <label for="v-varietal-otro">Varietal (texto libre)</label>
-          <input type="text" id="v-varietal-otro" autocomplete="off" disabled>
+          <div class="field field--color">
+            <label for="v-varietal-color">Color</label>
+            <input type="color" id="v-varietal-color" value="#6a5f52">
+          </div>
         </div>
         <div class="field-row">
           <div class="field">

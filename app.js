@@ -67,7 +67,6 @@ const VARIETALES = [
   { grupo: 'Blancos', items: ['Chardonnay', 'Sauvignon Blanc', 'Torrontés', 'Viognier', 'Chenin Blanc', 'Riesling', 'Semillón', 'Pinot Grigio', 'Gewürztraminer', 'Albariño', 'Verdejo', 'Moscatel', 'Marsanne', 'Roussanne'] },
   { grupo: 'Genéricos', items: ['Rosado', 'Espumante', 'Blend/Corte'] },
 ];
-const OTRO_VALUE = '__otro__'; // valor del <option> "Otro (texto libre)"
 
 /* Color por varietal para el hueco ocupado. Agrupados por familia (tintos en
    gama vino/púrpura/tierra, blancos en dorado/verde/ámbar, genéricos aparte)
@@ -91,11 +90,11 @@ const VARIETAL_COLOR = {
 const VARIETAL_FALLBACK = '#6a5f52'; // "Otro"/texto libre/desconocido: pizarra cálida
 
 const DB_NAME = 'cava';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const DIRTY_KEY = 'cava-dirty'; // hay cambios sin respaldar (ver §12)
 const GITHUB_KEY = 'cava-github'; // config de sincronización con GitHub (ver §12)
 const SYNC_SHA_KEY = 'cava-sync-sha'; // sha del último respaldo remoto sincronizado (ver §12)
-const BACKUP_SCHEMA_VERSION = 1;
+const BACKUP_SCHEMA_VERSION = 2; // v2 agrega `colores`; se siguen aceptando respaldos v1
 const BACKUP_FILENAME = 'vinos-backup.json'; // nombre fijo: se reemplaza siempre el mismo archivo (ver §12)
 const SLOT_ID_RE = /^t([12])-m(\d{2})-(\d{2})-s(\d{2})-(\d{2})$/;
 
@@ -119,9 +118,16 @@ function hexLum(hex) {
   return 0.2126 * chan(0) + 0.7152 * chan(2) + 0.0722 * chan(4);
 }
 
+/** Color efectivo de un varietal: primero el override guardado por el usuario
+    (state.colores), luego la paleta por defecto y, si no, el fallback neutro.
+    Cambiar el override repinta TODOS los vinos de ese varietal (§11). */
+function effectiveVarietalColor(varietal) {
+  return state.colores.get(varietal) || VARIETAL_COLOR[varietal] || VARIETAL_FALLBACK;
+}
+
 /** Colores del hueco ocupado (fondo/borde/texto) según el varietal del vino. */
 function slotColors(varietal) {
-  const bg = VARIETAL_COLOR[varietal] || VARIETAL_FALLBACK;
+  const bg = effectiveVarietalColor(varietal);
   return {
     bg,
     fg: hexLum(bg) > 0.42 ? '#1c1a17' : '#ffffff',
@@ -168,6 +174,7 @@ function openDB() {
       const db = request.result;
       if (!db.objectStoreNames.contains('vinos')) db.createObjectStore('vinos', { keyPath: 'id' });
       if (!db.objectStoreNames.contains('slots')) db.createObjectStore('slots', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('colores')) db.createObjectStore('colores', { keyPath: 'varietal' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('No se pudo abrir IndexedDB'));
@@ -387,6 +394,7 @@ const state = {
   db: null,
   vinos: new Map(),      // id -> vino
   slots: new Map(),      // slotId -> { id, vinoId }
+  colores: new Map(),    // varietal -> color hex (override del usuario, ver §11)
   slotEls: new Map(),    // slotId -> { btn, box, sigla, anio } (cache del DOM del mapa)
   currentSlotId: null,   // hueco abierto en el diálogo de posición
   pendingSlotId: null,   // hueco a asignar cuando se crea un vino desde el selector
@@ -433,16 +441,28 @@ async function reconcileSlots() {
 /** Carga ambos stores a memoria. Los slots fuera del LAYOUT no se cargan (no se renderizan). */
 async function loadAll() {
   const expected = expectedSlotIds();
-  const [vinos, slots] = await withTx(state.db, ['vinos', 'slots'], 'readonly', (tx) =>
-    Promise.all([req(tx.objectStore('vinos').getAll()), req(tx.objectStore('slots').getAll())])
+  const [vinos, slots, colores] = await withTx(state.db, ['vinos', 'slots', 'colores'], 'readonly', (tx) =>
+    Promise.all([
+      req(tx.objectStore('vinos').getAll()),
+      req(tx.objectStore('slots').getAll()),
+      req(tx.objectStore('colores').getAll()),
+    ])
   );
   state.vinos = new Map(vinos.map((v) => [v.id, v]));
   state.slots = new Map(slots.filter((s) => expected.has(s.id)).map((s) => [s.id, s]));
+  state.colores = new Map(colores.map((c) => [c.varietal, c.color]));
 }
 
 async function saveVino(vino) {
   await withTx(state.db, 'vinos', 'readwrite', (tx) => { tx.objectStore('vinos').put(vino); });
   state.vinos.set(vino.id, vino);
+  setDirty(true);
+}
+
+/** Guarda el color de un varietal (override). Repinta todos sus vinos vía slotColors. */
+async function setVarietalColor(varietal, color) {
+  await withTx(state.db, 'colores', 'readwrite', (tx) => { tx.objectStore('colores').put({ varietal, color }); });
+  state.colores.set(varietal, color);
   setDirty(true);
 }
 
@@ -907,6 +927,12 @@ function collectFilterValues() {
   };
 }
 
+/** Bodegas únicas ya cargadas, para sugerir en el combobox del formulario. */
+function collectBodegas() {
+  return [...new Set([...state.vinos.values()].map((v) => v.bodega).filter(Boolean))]
+    .sort((a, b) => norm(a).localeCompare(norm(b)));
+}
+
 /** Rellena los selects de filtro del catálogo con los valores presentes. */
 function populateFilterOptions() {
   const { varietales, anios } = collectFilterValues();
@@ -1070,42 +1096,169 @@ function wireVinosView() {
    11. FORMULARIO DE VINO (alta / edición)
    ============================================================================ */
 
-function buildVarietalSelect() {
-  const select = $('#v-varietal');
-  select.textContent = '';
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = 'Elegí un varietal…';
-  placeholder.disabled = true;
-  placeholder.selected = true;
-  select.appendChild(placeholder);
-  for (const { grupo, items } of VARIETALES) {
-    const og = document.createElement('optgroup');
-    og.label = grupo;
-    for (const item of items) {
-      const opt = document.createElement('option');
-      opt.value = item;
-      opt.textContent = item;
-      og.appendChild(opt);
+/** Varietales para sugerir en el combobox: los predefinidos más los que ya
+    aparezcan en el catálogo (texto libre cargado antes), sin repetir. */
+function collectVarietales() {
+  const set = new Set(VARIETALES.flatMap(({ items }) => items));
+  for (const v of state.vinos.values()) if (v.varietal) set.add(v.varietal);
+  return [...set].sort((a, b) => norm(a).localeCompare(norm(b)));
+}
+
+/** Refleja en el selector de color el color actual del varietal tipeado. */
+function syncVarietalColor() {
+  $('#v-varietal-color').value = effectiveVarietalColor($('#v-varietal').value.trim());
+}
+
+/* Combobox: autocompletado propio para inputs de texto libre (bodega, varietal).
+   Reemplaza al <datalist> nativo, que el navegador pinta pobre e inconsistente.
+   El input sigue siendo texto libre; el panel solo sugiere. getItems() se relee
+   en cada apertura (la lista crece con el catálogo); renderOption(valor, fila)
+   decora cada opción (al varietal le pone su color). El panel vive dentro del
+   <dialog> para quedar por encima, se ancla absoluto al campo (position:relative)
+   y abre hacia arriba si abajo no entra, así nunca lo recorta el cuerpo. */
+function createCombobox(input, { getItems, renderOption } = {}) {
+  const dlgBody = input.closest('.dlg-body');
+  const panel = document.createElement('div');
+  panel.className = 'combo-panel';
+  panel.id = `${input.id}-combo`;
+  panel.setAttribute('role', 'listbox');
+  panel.hidden = true;
+  input.after(panel);
+  input.setAttribute('role', 'combobox');
+  input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-controls', panel.id);
+  input.setAttribute('aria-expanded', 'false');
+
+  let opts = [];        // valores visibles ahora
+  let active = -1;       // opción resaltada
+  let suppress = false;  // ignora el 'input' que dispara select()
+  let blurTimer = 0;
+  const isOpen = () => !panel.hidden;
+
+  // Panel fixed: se ancla al input contra la VENTANA (no contra el cuerpo del
+  // diálogo), así flota por encima del modal sin que lo recorte y abre hacia
+  // abajo por defecto. Solo abre hacia arriba si abajo no entra (input muy al
+  // pie, típico con el teclado abierto).
+  function place() {
+    const ir = input.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const below = vh - ir.bottom - 8;
+    const above = ir.top - 8;
+    const up = below < 160 && above > below;
+    const maxH = Math.max(120, Math.min(320, up ? above : below));
+    panel.style.left = `${ir.left}px`;
+    panel.style.width = `${ir.width}px`;
+    panel.style.maxHeight = `${maxH}px`;
+    if (up) {
+      panel.style.top = 'auto';
+      panel.style.bottom = `${vh - ir.top + 4}px`;
+    } else {
+      panel.style.bottom = 'auto';
+      panel.style.top = `${ir.bottom + 4}px`;
     }
-    select.appendChild(og);
   }
-  const otro = document.createElement('option');
-  otro.value = OTRO_VALUE;
-  otro.textContent = 'Otro (texto libre)';
-  select.appendChild(otro);
-}
 
-function isKnownVarietal(v) {
-  return VARIETALES.some(({ items }) => items.includes(v));
-}
+  function show() {
+    if (panel.hidden) { panel.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+    place();
+  }
+  function close() {
+    if (!panel.hidden) { panel.hidden = true; input.setAttribute('aria-expanded', 'false'); }
+    setActive(-1);
+  }
 
-function syncVarietalOtro() {
-  const isOtro = $('#v-varietal').value === OTRO_VALUE;
-  $('#field-varietal-otro').hidden = !isOtro;
-  const input = $('#v-varietal-otro');
-  input.disabled = !isOtro;
-  input.required = isOtro;
+  function setActive(i) {
+    const rows = panel.querySelectorAll('.combo-opt');
+    if (active >= 0 && rows[active]) rows[active].classList.remove('is-active');
+    active = i;
+    if (active >= 0 && rows[active]) {
+      rows[active].classList.add('is-active');
+      rows[active].scrollIntoView({ block: 'nearest' });
+      input.setAttribute('aria-activedescendant', rows[active].id);
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  function select(value) {
+    suppress = true;
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true })); // dispara syncVarietalColor, etc.
+    suppress = false;
+    close();
+  }
+
+  function render(query) {
+    const q = norm(query);
+    opts = getItems().filter((v) => !q || norm(v).includes(q));
+    panel.textContent = '';
+    if (!opts.length) {
+      if (!query.trim()) { close(); return; } // lista vacía y sin texto: nada que mostrar
+      const hint = document.createElement('div');
+      hint.className = 'combo-hint';
+      hint.append('Se guardará como nuevo: ');
+      const b = document.createElement('b');
+      b.textContent = query.trim();
+      hint.appendChild(b);
+      panel.appendChild(hint);
+      active = -1;
+      show();
+      return;
+    }
+    opts.forEach((value, i) => {
+      const row = document.createElement('div');
+      row.className = 'combo-opt';
+      row.id = `${panel.id}-opt-${i}`;
+      row.setAttribute('role', 'option');
+      if (renderOption) {
+        renderOption(value, row);
+      } else {
+        const label = document.createElement('span');
+        label.className = 'combo-opt-label';
+        label.textContent = value;
+        row.appendChild(label);
+      }
+      row.addEventListener('mousemove', () => { if (active !== i) setActive(i); });
+      row.addEventListener('click', () => select(value));
+      panel.appendChild(row);
+    });
+    show();
+    setActive(query.trim() ? 0 : -1); // con texto, resalta el primero para Enter; sin texto, nada
+  }
+
+  input.addEventListener('focus', () => { clearTimeout(blurTimer); render(''); });
+  input.addEventListener('click', () => { if (!isOpen()) render(''); });
+  input.addEventListener('input', () => { if (!suppress) render(input.value); });
+  input.addEventListener('blur', () => { blurTimer = setTimeout(close, 150); }); // margen para el click en una opción
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen()) render('');
+      else setActive(Math.min(active + 1, opts.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      if (!isOpen()) return;
+      e.preventDefault();
+      setActive(Math.max(active - 1, 0));
+    } else if (e.key === 'Enter') {
+      if (isOpen() && active >= 0 && opts[active] != null) { e.preventDefault(); select(opts[active]); }
+      else if (isOpen()) { e.preventDefault(); close(); } // cierra el panel sin enviar el formulario
+    } else if (e.key === 'Escape') {
+      if (isOpen()) { e.preventDefault(); e.stopPropagation(); close(); } // 1er Esc cierra el panel, no el diálogo
+    } else if (e.key === 'Tab') {
+      close();
+    }
+  });
+
+  // Interactuar con el panel no debe robarle el foco al input (si no, blur lo cierra antes del click).
+  panel.addEventListener('mousedown', (e) => e.preventDefault());
+  // Reposicionar mientras está abierto: el input se mueve con el scroll del
+  // cuerpo, el resize de la ventana o el teclado (visualViewport en iOS).
+  const onReflow = () => { if (isOpen()) place(); };
+  window.addEventListener('resize', onReflow);
+  window.visualViewport?.addEventListener('resize', onReflow);
+  window.visualViewport?.addEventListener('scroll', onReflow);
+  if (dlgBody) dlgBody.addEventListener('scroll', onReflow, { passive: true });
+  input.closest('dialog')?.addEventListener('close', () => { clearTimeout(blurTimer); close(); });
 }
 
 const ANIO_MIN = 1950;
@@ -1174,27 +1327,33 @@ function openVinoForm(vino, prefill) {
   $('#v-fecha').value = (vino && vino.fechaCompra) || '';
   syncFechaVacia();
 
-  const select = $('#v-varietal');
-  if (vino) {
-    if (isKnownVarietal(vino.varietal)) {
-      select.value = vino.varietal;
-    } else {
-      select.value = OTRO_VALUE;
-      $('#v-varietal-otro').value = vino.varietal;
-    }
-  } else {
-    select.value = '';
-  }
-  syncVarietalOtro();
-  if (vino && !isKnownVarietal(vino.varietal)) $('#v-varietal-otro').value = vino.varietal;
+  $('#v-varietal').value = vino ? vino.varietal : '';
+  syncVarietalColor(); // el color arranca en el del varietal (o el fallback si es nuevo)
 
   openDialog($('#dlg-vino'));
 }
 
 function wireVinoForm() {
-  buildVarietalSelect();
-  $('#v-varietal').addEventListener('change', syncVarietalOtro);
+  // Al elegir/tipear un varietal, el selector de color muestra el color de ese
+  // varietal para que se vea (y se pueda cambiar) antes de guardar.
+  $('#v-varietal').addEventListener('input', syncVarietalColor);
   $('#v-nombre').addEventListener('input', syncSiglaPlaceholder);
+
+  // Autocompletado propio (reemplaza al <datalist> nativo). El de varietal
+  // muestra el color de cada uno; ambos leen la lista fresca en cada apertura.
+  createCombobox($('#v-bodega'), { getItems: collectBodegas });
+  createCombobox($('#v-varietal'), {
+    getItems: collectVarietales,
+    renderOption: (value, row) => {
+      const dot = document.createElement('span');
+      dot.className = 'combo-dot';
+      dot.style.background = effectiveVarietalColor(value);
+      const label = document.createElement('span');
+      label.className = 'combo-opt-label';
+      label.textContent = value;
+      row.append(dot, label);
+    },
+  });
 
   // La sigla se guarda en mayúsculas (ver el submit); esto lo hace también
   // sobre el valor tipeado, para que no dependa de guardar. Se preserva el
@@ -1214,8 +1373,7 @@ function wireVinoForm() {
     const form = e.target;
     if (!form.reportValidity()) return;
 
-    const selectVal = $('#v-varietal').value;
-    const varietal = selectVal === OTRO_VALUE ? $('#v-varietal-otro').value.trim() : selectVal;
+    const varietal = $('#v-varietal').value.trim();
     const anio = parseInt($('#v-anio').value, 10);
     if (!varietal || !Number.isInteger(anio)) return;
 
@@ -1236,8 +1394,13 @@ function wireVinoForm() {
     if (fecha) vino.fechaCompra = fecha;
 
     const assignTo = state.pendingSlotId; // capturado antes de cerrar (close lo resetea)
+    // El color elegido se guarda como override del varietal y repinta TODOS sus
+    // vinos (ver slotColors). Solo si cambió respecto del color efectivo actual.
+    const color = ($('#v-varietal-color').value || '').toLowerCase();
+    const guardarColor = /^#[0-9a-f]{6}$/.test(color) && color !== effectiveVarietalColor(varietal).toLowerCase();
     try {
       await saveVino(vino);
+      if (guardarColor) await setVarietalColor(varietal, color);
       if (assignTo) {
         await setSlotVino(assignTo, vino.id);
         state.pendingSlotId = null;
@@ -1263,7 +1426,9 @@ function wireVinoForm() {
 /* ============================================================================
    12. RESPALDO: SINCRONIZACIÓN CON GITHUB + EXPORTAR / IMPORTAR JSON
    Formato del respaldo:
-   { app: "cava", schemaVersion: 1, exportedAt: ISO, vinos: [...], slots: [...] }
+   { app: "cava", schemaVersion: 2, exportedAt: ISO, vinos: [...], slots: [...],
+     colores: [{ varietal, color }] }  // colores: override por varietal (v2);
+   los respaldos v1 (sin `colores`) se siguen aceptando.
 
    Con la sincronización configurada (⚙: repo/rama/archivo/token, guardado en
    localStorage bajo GITHUB_KEY), "Guardar cambios" SUBE el respaldo al repo
@@ -1438,8 +1603,12 @@ const horaCorta = (d = new Date()) =>
 /* --- Exportar --- */
 
 async function buildBackupJson() {
-  const [vinos, slots] = await withTx(state.db, ['vinos', 'slots'], 'readonly', (tx) =>
-    Promise.all([req(tx.objectStore('vinos').getAll()), req(tx.objectStore('slots').getAll())])
+  const [vinos, slots, colores] = await withTx(state.db, ['vinos', 'slots', 'colores'], 'readonly', (tx) =>
+    Promise.all([
+      req(tx.objectStore('vinos').getAll()),
+      req(tx.objectStore('slots').getAll()),
+      req(tx.objectStore('colores').getAll()),
+    ])
   );
   const envelope = {
     app: 'cava',
@@ -1447,6 +1616,7 @@ async function buildBackupJson() {
     exportedAt: new Date().toISOString(),
     vinos,
     slots,
+    colores,
   };
   return JSON.stringify(envelope, null, 2);
 }
@@ -1542,9 +1712,10 @@ async function exportToFile(json) {
 function validateBackup(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return 'El archivo no tiene el formato de un respaldo de Cava.';
   if (data.app !== undefined && data.app !== 'cava') return 'El archivo no es un respaldo de esta app.';
-  if (data.schemaVersion !== BACKUP_SCHEMA_VERSION) return 'Ese respaldo es de otra versión de Cava.';
+  if (data.schemaVersion !== 1 && data.schemaVersion !== 2) return 'Ese respaldo es de otra versión de Cava.';
   if (!Array.isArray(data.vinos)) return 'El respaldo no tiene la lista de vinos.';
   if (!Array.isArray(data.slots)) return 'El respaldo no tiene la lista de posiciones.';
+  if (data.colores !== undefined && !Array.isArray(data.colores)) return 'El respaldo tiene los colores en un formato inválido.';
 
   const vinoIds = new Set();
   for (let i = 0; i < data.vinos.length; i++) {
@@ -1571,6 +1742,16 @@ function validateBackup(data) {
     if (slotIds.has(s.id)) return `Respaldo inválido: id de posición repetido (${s.id}).`;
     slotIds.add(s.id);
     if (s.vinoId != null && !vinoIds.has(s.vinoId)) return `Respaldo inválido: ${donde} referencia un vino inexistente.`;
+  }
+
+  if (Array.isArray(data.colores)) {
+    for (let i = 0; i < data.colores.length; i++) {
+      const c = data.colores[i];
+      const donde = `color #${i + 1}`;
+      if (!c || typeof c !== 'object') return `El respaldo está dañado: no se entiende el ${donde}.`;
+      if (typeof c.varietal !== 'string' || !c.varietal.trim()) return `Respaldo inválido: ${donde} no tiene varietal.`;
+      if (typeof c.color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(c.color)) return `Respaldo inválido: ${donde} tiene un color inválido.`;
+    }
   }
   return null;
 }
@@ -1607,11 +1788,13 @@ async function importData(data, origen) {
 
   try {
     // Reemplazo atómico: clear + puts en una sola transacción.
-    await withTx(state.db, ['vinos', 'slots'], 'readwrite', (tx) => {
+    await withTx(state.db, ['vinos', 'slots', 'colores'], 'readwrite', (tx) => {
       const vinosStore = tx.objectStore('vinos');
       const slotsStore = tx.objectStore('slots');
+      const coloresStore = tx.objectStore('colores');
       vinosStore.clear();
       slotsStore.clear();
+      coloresStore.clear(); // el respaldo es un snapshot completo: si es v1 (sin colores), quedan vacíos
       for (const v of data.vinos) {
         const vino = { id: v.id, nombre: v.nombre, bodega: v.bodega, anio: v.anio, varietal: v.varietal };
         if (v.precioCompra != null) vino.precioCompra = v.precioCompra;
@@ -1620,6 +1803,9 @@ async function importData(data, origen) {
       }
       for (const s of data.slots) {
         slotsStore.put({ id: s.id, vinoId: s.vinoId == null ? null : s.vinoId });
+      }
+      for (const c of (data.colores || [])) {
+        coloresStore.put({ varietal: c.varietal, color: c.color });
       }
     });
     // El respaldo puede ser anterior a un cambio de LAYOUT: reconciliar de nuevo.
