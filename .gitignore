@@ -1,0 +1,6 @@
+# Configuración de Claude Code local a esta máquina: guarda permisos con
+# rutas absolutas, así que no sirve en otra computadora.
+.claude/settings.local.json
+
+# macOS
+.DS_Store
