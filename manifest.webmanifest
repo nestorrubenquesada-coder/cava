@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "Cava",
   "short_name": "Cava",
   "description": "Mapa visual de tu cava de vinos: dónde está cada botella.",
@@ -6,7 +7,7 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "landscape",
+  "orientation": "any",
   "background_color": "#d6cfc0",
   "theme_color": "#948d7e",
   "icons": [

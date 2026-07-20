@@ -45,7 +45,7 @@ No sirve abrir `index.html` con doble click (`file://`): el service worker neces
 Otras notas de iOS:
 
 - En Safari sin instalar, iOS puede borrar los datos de sitios que no visitás por 7 días. Instalada como PWA no aplica, pero exportar respaldos seguido es la red de seguridad.
-- iOS ignora la orientación declarada en el manifiesto; la app está pensada para horizontal pero funciona en vertical.
+- El manifiesto no fuerza orientación (`"orientation": "any"`): la app está pensada para horizontal pero funciona en vertical, y en el teléfono se usa así. Forzar `landscape` solo tendría efecto en Android instalada — iOS lo ignora de todas formas.
 - El modo offline arranca a partir de la **segunda** visita (la primera instala el service worker).
 
 ## Respaldos (sincronización con GitHub)
