@@ -6,7 +6,7 @@
   <title>Cava</title>
   <meta name="description" content="Mapa visual de tu cava de vinos: dónde está cada botella.">
 
-  <meta name="theme-color" content="#8d8470">
+  <meta name="theme-color" content="#6a655c">
 
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -26,23 +26,19 @@
 <body>
 
   <header class="app-header">
-    <button id="btn-volver" class="btn" type="button" hidden>
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M9.5 3.5 5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Volver
-    </button>
-
       <!-- .lbl-full / .lbl-compact: en pantallas angostas (iPhone) el CSS muestra
-         la etiqueta corta para que el header entre completo sin cortarse. -->
+         la etiqueta corta para que el header entre completo sin cortarse. Cada
+         vista muestra los botones a las OTRAS dos (ver applyRoute); orden fijo
+         dashboard · volver · vinos para que cada par quede bien ordenado. -->
+    <button id="btn-dashboard" class="btn" type="button"><span class="lbl-full">Ver Dashboard</span><span class="lbl-compact">Dashboard</span></button>
+    <button id="btn-volver" class="btn" type="button" hidden><span class="lbl-full">Volver a la Cava</span><span class="lbl-compact">Cava</span></button>
     <button id="btn-vinos" class="btn" type="button"><span class="lbl-full">Catálogo de Vinos</span><span class="lbl-compact">Vinos</span></button>
 
     <div class="header-actions">
       <button id="btn-config" class="btn btn--icon" type="button" aria-label="Configuración" title="Configuración">
-        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M1.75 4.25h5.5M12.75 4.25h1.5M1.75 11.75h1.5M8.75 11.75h5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <circle cx="10" cy="4.25" r="2.1" fill="none" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="6" cy="11.75" r="2.1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <svg width="19" height="19" viewBox="-1 -1 26 26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
       </button>
       <button id="btn-export" class="btn btn--primary" type="button" hidden><span class="lbl-full">Guardar cambios</span><span class="lbl-compact">Guardar</span></button>
@@ -131,6 +127,22 @@
       <div class="vinos-scroll">
         <div class="vino-list" id="vino-list" hidden></div>
         <p class="empty-note" id="vinos-empty" hidden></p>
+      </div>
+    </section>
+
+    <!-- ===== Sección Dashboard: métricas de la cava ===== -->
+    <section id="view-dashboard" class="view" hidden>
+      <!-- Switch de orientación: acota TODAS las métricas a todas las posiciones,
+           solo las acostadas (horizontales) o solo las paradas (verticales). -->
+      <div class="dash-toolbar">
+        <div class="seg" role="group" aria-label="Filtrar posiciones por orientación">
+          <button type="button" class="seg-btn is-active" data-orient="todas" aria-pressed="true">Todos</button>
+          <button type="button" class="seg-btn" data-orient="acostada" aria-pressed="false">Acostados</button>
+          <button type="button" class="seg-btn" data-orient="parada" aria-pressed="false">Parados</button>
+        </div>
+      </div>
+      <div class="dash-scroll">
+        <div class="dash-grid" id="dash-grid"></div>
       </div>
     </section>
   </main>

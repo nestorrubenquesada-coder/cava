@@ -523,6 +523,7 @@ function occupancyMap() {
 const ROUTES = {
   '#/cava': { view: 'cava' },
   '#/vinos': { view: 'vinos' },
+  '#/dashboard': { view: 'dashboard' },
 };
 
 function applyRoute() {
@@ -532,7 +533,8 @@ function applyRoute() {
     hash = '#/cava';
     history.replaceState(null, '', hash);
   }
-  const enCava = ROUTES[hash].view === 'cava';
+  const view = ROUTES[hash].view;
+  const enCava = view === 'cava';
 
   // Un elemento oculto pierde su scroll: guardar la página del carrusel al
   // salir del mapa y restaurarla al volver.
@@ -541,11 +543,17 @@ function applyRoute() {
   if (!viewCava.hidden && !enCava) state.mapScrollLeft = mapArea.scrollLeft;
 
   viewCava.hidden = !enCava;
-  $('#view-vinos').hidden = enCava;
+  $('#view-vinos').hidden = view !== 'vinos';
+  $('#view-dashboard').hidden = view !== 'dashboard';
 
-  // Header único: "Catálogo de Vinos" en el mapa; "Volver" en el catálogo.
-  $('#btn-vinos').hidden = !enCava;
-  $('#btn-volver').hidden = enCava;
+  // Header: cada vista muestra los botones a las OTRAS dos (se oculta el de la
+  // vista actual). Orden en el DOM: dashboard · volver · vinos.
+  $('#btn-dashboard').hidden = view === 'dashboard';
+  $('#btn-volver').hidden = enCava; // "Volver a la Cava": oculto solo en la cava
+  $('#btn-vinos').hidden = view === 'vinos';
+
+  // El dashboard se recalcula al entrar (los datos pudieron cambiar en otra vista).
+  if (view === 'dashboard') renderDashboard();
 
   if (enCava) {
     mapArea.scrollLeft = state.mapScrollLeft;
@@ -556,10 +564,259 @@ function applyRoute() {
 }
 
 function wireRouter() {
+  $('#btn-dashboard').addEventListener('click', () => { location.hash = '#/dashboard'; });
   $('#btn-vinos').addEventListener('click', () => { location.hash = '#/vinos'; });
   $('#btn-volver').addEventListener('click', () => { location.hash = '#/cava'; });
   window.addEventListener('hashchange', applyRoute);
   applyRoute();
+}
+
+/* ============================================================================
+   7b. DASHBOARD
+   Vista de métricas: ocupación, distribución por varietal, por cava y por
+   bodega. Todo respeta el switch de orientación (todas / acostadas / paradas).
+   Los gráficos se dibujan con SVG inline (sin librerías, a tono con el resto).
+   ============================================================================ */
+const DASH = { orient: 'todas' };            // 'todas' | 'acostada' | 'parada'
+const DASH_TOP_VARIETALES = 3;               // slices de la torta antes de agrupar en "Otros" (top 3 + Otros = leyenda 2×2)
+const DASH_TOP_BODEGAS = 6;                  // barras de bodegas
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+function svgEl(name, attrs) {
+  const node = document.createElementNS(SVGNS, name);
+  for (const k in attrs) node.setAttribute(k, String(attrs[k]));
+  return node;
+}
+
+/** Clasifica cada hueco esperado como 'acostada' u 'parada' según el LAYOUT. */
+function slotOrientations() {
+  const map = new Map();
+  forEachExpectedSlot((s) => {
+    const off = s.inner.freezer || 0;
+    // La fila extra de la heladera (paradasAlto) son botellas paradas; el resto
+    // de sus filas y las de los módulos normales son acostadas.
+    const paradaAlto = s.inner.paradasAlto && s.slotFila === off + s.inner.filas + 1;
+    map.set(s.id, (s.parado || paradaAlto) ? 'parada' : 'acostada');
+  });
+  return map;
+}
+
+/** Agrega las métricas del dashboard para el switch de orientación activo. */
+function dashboardStats() {
+  const orient = slotOrientations();
+  const stats = {
+    total: 0, ocupadas: 0,
+    porCava: { 1: { total: 0, ocup: 0 }, 2: { total: 0, ocup: 0 } },
+    porVarietal: new Map(),   // varietal -> cantidad de botellas ubicadas
+    porBodega: new Map(),     // bodega -> cantidad de botellas ubicadas
+    vinos: new Set(),         // vinos distintos ubicados
+  };
+  for (const slot of state.slots.values()) {
+    const o = orient.get(slot.id);
+    if (!o) continue;
+    if (DASH.orient !== 'todas' && o !== DASH.orient) continue;
+    const tab = parseSlotId(slot.id)?.tab;
+    stats.total++;
+    if (stats.porCava[tab]) stats.porCava[tab].total++;
+    if (slot.vinoId) {
+      const vino = state.vinos.get(slot.vinoId);
+      stats.ocupadas++;
+      if (stats.porCava[tab]) stats.porCava[tab].ocup++;
+      stats.vinos.add(slot.vinoId);
+      const varietal = (vino && vino.varietal) || 'Sin varietal';
+      const bodega = (vino && vino.bodega) || 'Sin bodega';
+      stats.porVarietal.set(varietal, (stats.porVarietal.get(varietal) || 0) + 1);
+      stats.porBodega.set(bodega, (stats.porBodega.get(bodega) || 0) + 1);
+    }
+  }
+  return stats;
+}
+
+/** Anillo de progreso de un solo valor (ocupación). */
+function ringSVG(pct, { size = 132, thickness = 15 } = {}) {
+  const r = (size - thickness) / 2, c = 2 * Math.PI * r, cx = size / 2;
+  const p = Math.max(0, Math.min(1, pct / 100));
+  const svg = svgEl('svg', { viewBox: `0 0 ${size} ${size}`, class: 'dash-ring', 'aria-hidden': 'true' });
+  svg.appendChild(svgEl('circle', { cx, cy: cx, r, fill: 'none', stroke: 'var(--dash-track)', 'stroke-width': thickness }));
+  if (p > 0) {
+    svg.appendChild(svgEl('circle', {
+      cx, cy: cx, r, fill: 'none', stroke: 'var(--primary)', 'stroke-width': thickness, 'stroke-linecap': 'round',
+      'stroke-dasharray': `${c * p} ${c}`, transform: `rotate(-90 ${cx} ${cx})`,
+    }));
+  }
+  return svg;
+}
+
+/** Torta/donut de varios segmentos. segments: [{ label, value, color }]. */
+function donutSVG(segments, { size = 132, thickness = 22 } = {}) {
+  const total = segments.reduce((s, x) => s + x.value, 0);
+  const r = (size - thickness) / 2, c = 2 * Math.PI * r, cx = size / 2;
+  const svg = svgEl('svg', { viewBox: `0 0 ${size} ${size}`, class: 'dash-donut', 'aria-hidden': 'true' });
+  if (total === 0) {
+    svg.appendChild(svgEl('circle', { cx, cy: cx, r, fill: 'none', stroke: 'var(--dash-track)', 'stroke-width': thickness }));
+    return svg;
+  }
+  let acc = 0;
+  for (const seg of segments) {
+    if (seg.value <= 0) continue;
+    const dash = (seg.value / total) * c;
+    svg.appendChild(svgEl('circle', {
+      cx, cy: cx, r, fill: 'none', stroke: seg.color, 'stroke-width': thickness,
+      'stroke-dasharray': `${dash} ${c - dash}`, 'stroke-dashoffset': -acc,
+      transform: `rotate(-90 ${cx} ${cx})`,
+    }));
+    acc += dash;
+  }
+  return svg;
+}
+
+function dashCard(title, extraClass) {
+  const card = el('div', 'dash-card' + (extraClass ? ' ' + extraClass : ''));
+  if (title) card.appendChild(el('h3', 'dash-card-title', title));
+  return card;
+}
+function dashEmpty(msg) {
+  return el('p', 'dash-empty', msg);
+}
+/** Una barra horizontal con nombre, valor a la derecha y relleno proporcional. */
+function barRow(name, valueText, pct, color) {
+  const row = el('div', 'dash-bar-row');
+  const head = el('div', 'dash-bar-head');
+  head.append(el('span', 'dash-bar-name', name), el('span', 'dash-bar-val', valueText));
+  const track = el('div', 'dash-bar-track');
+  const fill = el('div', 'dash-bar-fill');
+  fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  fill.style.background = color;
+  track.appendChild(fill);
+  row.append(head, track);
+  return row;
+}
+
+function varietalCard(s) {
+  const card = dashCard('Distribución por varietal');
+  const entries = [...s.porVarietal.entries()].sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    card.appendChild(dashEmpty('Todavía no hay botellas ubicadas.'));
+    return card;
+  }
+  // La torta se mantiene legible: top-N varietales + un slice "Otros" agrupado.
+  const top = entries.slice(0, DASH_TOP_VARIETALES);
+  const rest = entries.slice(DASH_TOP_VARIETALES);
+  const segments = top.map(([v, n]) => ({ label: v, value: n, color: effectiveVarietalColor(v) }));
+  if (rest.length) {
+    const otros = rest.reduce((a, [, n]) => a + n, 0);
+    segments.push({ label: `Otros (${rest.length})`, value: otros, color: 'var(--dash-otros)' });
+  }
+  const total = segments.reduce((a, x) => a + x.value, 0);
+
+  const chart = el('div', 'dash-chart-row');
+  const donutWrap = el('div', 'dash-donut-wrap');
+  donutWrap.appendChild(donutSVG(segments));
+  const lbl = el('div', 'dash-ring-label');
+  lbl.append(el('span', 'dash-ring-pct', String(total)), el('span', 'dash-ring-sub', total === 1 ? 'botella' : 'botellas'));
+  donutWrap.appendChild(lbl);
+  chart.appendChild(donutWrap);
+
+  const legend = el('ul', 'dash-legend');
+  for (const seg of segments) {
+    const li = el('li', 'dash-legend-item');
+    const dot = el('span', 'dash-legend-dot');
+    dot.style.background = seg.color;
+    li.append(dot, el('span', 'dash-legend-name', seg.label),
+      el('span', 'dash-legend-val', `${seg.value} · ${Math.round((seg.value / total) * 100)}%`));
+    legend.appendChild(li);
+  }
+  chart.appendChild(legend);
+  card.appendChild(chart);
+  return card;
+}
+
+function cavaCard(s) {
+  const card = dashCard('Ocupación por cava');
+  const rows = [['Principal', s.porCava[1]], ['Secundaria', s.porCava[2]]].filter(([, d]) => d.total > 0);
+  if (rows.length === 0) {
+    card.appendChild(dashEmpty('No hay posiciones para este filtro.'));
+    return card;
+  }
+  const list = el('div', 'dash-bars');
+  for (const [name, d] of rows) {
+    const p = d.total ? Math.round((d.ocup / d.total) * 100) : 0;
+    list.appendChild(barRow(name, `${d.ocup}/${d.total} · ${p}%`, p, 'var(--primary)'));
+  }
+  card.appendChild(list);
+  return card;
+}
+
+function bodegaCard(s) {
+  const card = dashCard('Bodegas con más botellas', 'dash-wide');
+  const entries = [...s.porBodega.entries()].sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    card.appendChild(dashEmpty('Todavía no hay botellas ubicadas.'));
+    return card;
+  }
+  const top = entries.slice(0, DASH_TOP_BODEGAS);
+  const max = top[0][1];
+  const list = el('div', 'dash-bars');
+  for (const [name, n] of top) {
+    list.appendChild(barRow(name, `${n} ${n === 1 ? 'botella' : 'botellas'}`, (n / max) * 100, 'var(--wood)'));
+  }
+  card.appendChild(list);
+  return card;
+}
+
+function renderDashboard() {
+  const grid = $('#dash-grid');
+  if (!grid) return;
+  const s = dashboardStats();
+  const pct = s.total ? Math.round((s.ocupadas / s.total) * 100) : 0;
+  const libres = s.total - s.ocupadas;
+  grid.textContent = '';
+
+  // 1) Ocupación (anillo) — el número que responde "¿cuánta cava me queda?".
+  const hero = dashCard('Ocupación', 'dash-card--hero');
+  const ringWrap = el('div', 'dash-ring-wrap');
+  ringWrap.appendChild(ringSVG(pct));
+  const ringLbl = el('div', 'dash-ring-label');
+  ringLbl.append(el('span', 'dash-ring-pct', `${pct}%`), el('span', 'dash-ring-sub', 'ocupación'));
+  ringWrap.appendChild(ringLbl);
+  hero.append(ringWrap, el('p', 'dash-hero-note', `${s.ocupadas} de ${s.total} posiciones ocupadas`));
+  grid.appendChild(hero);
+
+  // 2) Números clave.
+  const tiles = el('div', 'dash-tiles');
+  for (const [label, value] of [
+    ['Posiciones', s.total], ['Ocupadas', s.ocupadas], ['Libres', libres], ['Vinos distintos', s.vinos.size],
+  ]) {
+    const t = el('div', 'dash-tile');
+    t.append(el('span', 'dash-tile-label', label), el('span', 'dash-tile-value', String(value)));
+    tiles.appendChild(t);
+  }
+  grid.appendChild(tiles);
+
+  // 3) Composición y desgloses.
+  grid.append(varietalCard(s), cavaCard(s), bodegaCard(s));
+}
+
+function wireDashboard() {
+  const seg = $('#view-dashboard .seg');
+  if (!seg) return;
+  seg.addEventListener('click', (e) => {
+    const btn = e.target.closest('.seg-btn');
+    if (!btn || btn.classList.contains('is-active')) return;
+    DASH.orient = btn.dataset.orient;
+    for (const b of seg.querySelectorAll('.seg-btn')) {
+      const on = b === btn;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    renderDashboard();
+  });
 }
 
 /* ============================================================================
@@ -1862,6 +2119,7 @@ function validateBackup(data) {
     if (v.precioCompra != null && typeof v.precioCompra !== 'number') return `Respaldo inválido: ${donde} tiene un precio inválido.`;
     if (v.fechaCompra != null && typeof v.fechaCompra !== 'string') return `Respaldo inválido: ${donde} tiene una fecha inválida.`;
     if (v.origen != null && typeof v.origen !== 'string') return `Respaldo inválido: ${donde} tiene un origen inválido.`;
+    if (v.sigla != null && typeof v.sigla !== 'string') return `Respaldo inválido: ${donde} tiene una sigla inválida.`;
   }
 
   const slotIds = new Set();
@@ -1929,6 +2187,7 @@ async function importData(data, origen) {
       coloresStore.clear(); // el respaldo es un snapshot completo: si es v1 (sin colores), quedan vacíos
       for (const v of data.vinos) {
         const vino = { id: v.id, nombre: v.nombre, bodega: v.bodega, varietal: v.varietal };
+        if (v.sigla != null) vino.sigla = v.sigla; // sigla editable (opcional)
         if (v.origen != null) vino.origen = v.origen; // origen opcional
         if (v.anio != null) vino.anio = v.anio; // año opcional
         if (v.precioCompra != null) vino.precioCompra = v.precioCompra;
@@ -2293,6 +2552,13 @@ function showToast(message, opts) {
   const el = $(error ? '#toast-err' : '#toast');
   const otro = $(error ? '#toast' : '#toast-err');
   otro.classList.remove('show');
+  // Un <dialog> abierto con showModal() vive en el "top layer" del navegador,
+  // por encima de cualquier z-index. Para que el toast se lea sobre el modal
+  // (p. ej. "Probar conexión"), se cuelga del diálogo abierto —así comparte ese
+  // top layer— y vuelve al body cuando no hay ninguno. Sigue position:fixed, así
+  // que su lugar en pantalla no cambia.
+  const host = document.querySelector('dialog[open]') || document.body;
+  if (el.parentNode !== host) host.appendChild(el);
   el.textContent = message;
   el.classList.add('show');
   clearTimeout(toastTimer);
@@ -2368,6 +2634,7 @@ async function withBusy(btn, fn) {
   wireSlotDialog();
   wireVinosView();
   wireVinoForm();
+  wireDashboard();
   wireBackup();
   populateFilterOptions();
   populateMapFilterOptions();

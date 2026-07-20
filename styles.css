@@ -17,7 +17,7 @@
   --border-faint: rgba(110, 96, 74, 0.30);
   --surface: #e3dac6;        /* tarjetas, botones, píldora de sección (un paso más claro que el fondo) */
   --surface-hover: #d7ccb7;
-  --header-bg: #8d8470;      /* barra superior: mismo greige del fondo, más oscuro */
+  --header-bg: #6a655c;      /* barra superior: gris cálido de los módulos ciegos */
   --primary: #892b3c;        /* acento bordeaux, a tono cava/pub */
   --primary-hover: #732333;
   --on-primary: #ffffff;
@@ -47,6 +47,9 @@
      azul (#1c2027, el más frío del sistema); se lo caldea a tono con el resto. */
   --slot-empty-bg: #221f20;
   --slot-empty-border: rgba(255, 255, 255, 0.05);
+  /* Dashboard (§8b): riel de fondo de anillos/barras y color del slice "Otros". */
+  --dash-track: rgba(110, 96, 74, 0.22);
+  --dash-otros: #9c8f79;
 }
 
 /* ---------- 2. Base ---------- */
@@ -94,19 +97,21 @@ button { font: inherit; color: inherit; }
    scrollbar-color es el estándar y ::-webkit-scrollbar lo que entienden
    Safari y los Chrome viejos. En iOS no aplica: ahí la barra es flotante y
    la dibuja el sistema. */
-.map-area, .vinos-scroll, .dlg-body, .picker-list, .combo-panel {
+.map-area, .vinos-scroll, .dash-scroll, .dlg-body, .picker-list, .combo-panel {
   scrollbar-width: thin;
   scrollbar-color: #a89c88 var(--bg);
 }
 .combo-panel { scrollbar-color: #a89c88 var(--surface); } /* el panel es --surface, no --bg */
 .map-area::-webkit-scrollbar,
 .vinos-scroll::-webkit-scrollbar,
+.dash-scroll::-webkit-scrollbar,
 .dlg-body::-webkit-scrollbar,
 .picker-list::-webkit-scrollbar,
 .combo-panel::-webkit-scrollbar { width: 11px; height: 11px; }
 
 .map-area::-webkit-scrollbar-track,
 .vinos-scroll::-webkit-scrollbar-track,
+.dash-scroll::-webkit-scrollbar-track,
 .dlg-body::-webkit-scrollbar-track,
 .picker-list::-webkit-scrollbar-track { background: var(--bg); }
 .combo-panel::-webkit-scrollbar-track { background: var(--surface); }
@@ -115,6 +120,7 @@ button { font: inherit; color: inherit; }
    pulgar, así no toca los bordes del carril. */
 .map-area::-webkit-scrollbar-thumb,
 .vinos-scroll::-webkit-scrollbar-thumb,
+.dash-scroll::-webkit-scrollbar-thumb,
 .dlg-body::-webkit-scrollbar-thumb,
 .picker-list::-webkit-scrollbar-thumb,
 .combo-panel::-webkit-scrollbar-thumb {
@@ -127,12 +133,14 @@ button { font: inherit; color: inherit; }
 @media (hover: hover) {
   .map-area::-webkit-scrollbar-thumb:hover,
   .vinos-scroll::-webkit-scrollbar-thumb:hover,
+  .dash-scroll::-webkit-scrollbar-thumb:hover,
   .dlg-body::-webkit-scrollbar-thumb:hover,
   .picker-list::-webkit-scrollbar-thumb:hover,
   .combo-panel::-webkit-scrollbar-thumb:hover { background: #8d8170; }
 }
 .map-area::-webkit-scrollbar-corner,
 .vinos-scroll::-webkit-scrollbar-corner,
+.dash-scroll::-webkit-scrollbar-corner,
 .dlg-body::-webkit-scrollbar-corner,
 .picker-list::-webkit-scrollbar-corner { background: var(--bg); }
 .combo-panel::-webkit-scrollbar-corner { background: var(--surface); }
@@ -146,12 +154,14 @@ button { font: inherit; color: inherit; }
   display: flex;
   align-items: stretch;
   gap: 4px;
-  min-height: calc(48px + env(safe-area-inset-top));
+  min-height: calc(52px + env(safe-area-inset-top)); /* +4px sobre el 48 original: 2px de aire arriba y 2px abajo */
   /* Safe areas: el header se "sale" del padding lateral del body con margen
      negativo y lo recupera como padding propio, así su fondo pinta también
-     bajo el notch (arriba y a los costados en horizontal). */
+     bajo el notch (arriba y a los costados en horizontal). Aire vertical
+     simétrico: 2px arriba (sobre el inset) y 1px abajo, porque el borde
+     inferior de 1px (dentro del border-box) suma ese 1px que faltaba. */
   margin: 0 calc(-1 * env(safe-area-inset-right)) 0 calc(-1 * env(safe-area-inset-left));
-  padding: env(safe-area-inset-top) calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left));
+  padding: calc(env(safe-area-inset-top) + 2px) calc(12px + env(safe-area-inset-right)) 1px calc(12px + env(safe-area-inset-left));
   background: var(--header-bg);
   border-bottom: 1px solid rgba(0, 0, 0, 0.2);
 }
@@ -228,7 +238,9 @@ button { font: inherit; color: inherit; }
   .btn--danger-solid:hover { filter: brightness(0.94); }
 }
 
-.btn--icon { padding: 5px 9px; }
+/* Cuadrado: aspect-ratio 1 + icono centrado → el aire lateral iguala al
+   superior/inferior a cualquier alto (34px, o 38px en touch). */
+.btn--icon { padding: 0; aspect-ratio: 1; }
 .btn--sm { min-height: 30px; padding: 3px 10px; font-size: 13px; }
 
 /* Etiquetas dobles del header: la corta solo se muestra en pantallas
@@ -392,7 +404,9 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   flex: none;
   display: flex;
   align-items: center;
-  padding: 12px;
+  /* Mismo alto de barra que el header principal (48px, control centrado). */
+  min-height: 48px;
+  padding: 6px 12px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
@@ -553,7 +567,9 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 12px;
+  /* Borde superior del subheader a tono con el header principal; el 12px
+     inferior es la separación interna con la barra de orden. */
+  padding: 6px 12px 12px;
 }
 .toolbar input[type="search"] { flex: 1; min-width: 180px; }
 
@@ -569,7 +585,7 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 0 12px 12px;
+  padding: 0 12px 6px;
   border-bottom: 1px solid var(--border); /* divisoria como el subheader de /cava */
 }
 .sortbar label { flex: none; font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -648,6 +664,188 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .empty-note { color: var(--muted); text-align: center; padding: 40px 12px; }
+
+/* ---------- 8b. Dashboard ----------
+   Grilla de tarjetas con métricas de la cava. Gráficos en SVG inline (sin
+   librerías): un anillo de ocupación, una torta por varietal y barras. */
+.dash-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  /* Mismo alto de barra que el header principal (48px, control centrado). */
+  min-height: 48px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Control segmentado (switch de orientación): la opción activa se marca con el
+   bordeaux de la marca para que se lea sin dudar. Grid de 3 columnas de ANCHO
+   FIJO (no 1fr por contenido): así la opción activa —que pasa a negrita, más
+   ancha— no ensancha su botón al seleccionarse. El ancho holgado para "Acostados"
+   en negrita. */
+.seg {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 7.5em;
+  gap: 3px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.seg-btn {
+  min-height: 30px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.seg-btn.is-active { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+@media (hover: hover) {
+  .seg-btn:not(.is-active):hover { color: var(--fg); }
+}
+@media (pointer: coarse) { .seg-btn { min-height: 36px; } }
+
+.dash-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  /* stretch: en 2 columnas, la tarjeta más baja de cada fila iguala el alto de
+     la más alta (mosaicos = ocupación; ocupación por cava = varietales). */
+  align-items: stretch;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+@media (min-width: 720px) { .dash-grid { grid-template-columns: 1fr 1fr; } }
+.dash-wide { grid-column: 1 / -1; }
+
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.dash-card-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dash-empty { margin: 0; padding: 6px 0; color: var(--muted); font-size: 13px; }
+
+/* Anillo de ocupación (hero) y torta comparten el bloque circular con etiqueta
+   centrada superpuesta. El título va arriba a la izquierda como el resto; solo
+   el anillo y su nota quedan centrados. */
+.dash-card--hero { align-items: center; }
+.dash-card--hero .dash-card-title { align-self: stretch; }
+.dash-ring-wrap, .dash-donut-wrap {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  flex: none;
+}
+.dash-ring, .dash-donut { display: block; width: 100%; height: 100%; }
+.dash-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  pointer-events: none;
+}
+.dash-ring-pct { font-size: 30px; font-weight: 700; line-height: 1; color: var(--fg); }
+.dash-ring-sub { font-size: 12px; color: var(--muted); }
+.dash-hero-note { margin: 0; font-size: 13px; color: var(--muted); }
+
+/* Números clave: cuadrícula 2×2 de mosaicos. En 2 columnas se estira para
+   igualar el alto de la tarjeta de ocupación (izquierda); sus dos filas se
+   reparten ese alto en partes iguales (grid-template-rows: 1fr 1fr). */
+.dash-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  align-self: stretch;
+}
+.dash-tile {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+/* Etiqueta arriba a la izquierda (mismo estilo que los títulos de tarjeta) y
+   número centrado en el resto del mosaico. */
+.dash-tile-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dash-tile-value {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--fg);
+}
+
+/* Torta centrada arriba y leyenda debajo en una cuadrícula 2×2 (top 3 + Otros). */
+.dash-chart-row { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.dash-legend {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+.dash-legend-item { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
+.dash-legend-dot { flex: none; width: 12px; height: 12px; border-radius: 3px; }
+.dash-legend-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-legend-val { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Barras horizontales (ocupación por cava, bodegas). */
+.dash-bars { display: flex; flex-direction: column; gap: 12px; }
+.dash-bar-row { display: flex; flex-direction: column; gap: 5px; }
+.dash-bar-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.dash-bar-name { min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-bar-val { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dash-bar-track { height: 8px; border-radius: 999px; background: var(--dash-track); overflow: hidden; }
+.dash-bar-fill { height: 100%; border-radius: 999px; min-width: 3px; }
 
 /* ---------- 9. Diálogos ----------
    Centrados en el área ÚTIL: los cuatro insets descuentan notch y home
