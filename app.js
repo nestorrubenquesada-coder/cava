@@ -63,24 +63,24 @@ const LAYOUT = {
 };
 
 const VARIETALES = [
-  { grupo: 'Tintas', items: ['Malbec', 'Cabernet Sauvignon', 'Cabernet Franc', 'Merlot', 'Syrah', 'Pinot Noir', 'Bonarda', 'Tempranillo', 'Tannat', 'Petit Verdot', 'Sangiovese', 'Nebbiolo', 'Garnacha', 'Carménère', 'Zinfandel', 'Barbera', 'Montepulciano', 'Monastrell', 'Pinotage', 'Touriga Nacional'] },
-  { grupo: 'Blancas', items: ['Chardonnay', 'Sauvignon Blanc', 'Torrontés', 'Viognier', 'Chenin Blanc', 'Riesling', 'Semillón', 'Pinot Grigio', 'Gewürztraminer', 'Albariño', 'Verdejo', 'Moscatel', 'Marsanne', 'Roussanne'] },
+  { grupo: 'Tintos', items: ['Malbec', 'Cabernet Sauvignon', 'Cabernet Franc', 'Merlot', 'Syrah', 'Pinot Noir', 'Bonarda', 'Tempranillo', 'Tannat', 'Petit Verdot', 'Sangiovese', 'Nebbiolo', 'Garnacha', 'Carménère', 'Zinfandel', 'Barbera', 'Montepulciano', 'Monastrell', 'Pinotage', 'Touriga Nacional'] },
+  { grupo: 'Blancos', items: ['Chardonnay', 'Sauvignon Blanc', 'Torrontés', 'Viognier', 'Chenin Blanc', 'Riesling', 'Semillón', 'Pinot Grigio', 'Gewürztraminer', 'Albariño', 'Verdejo', 'Moscatel', 'Marsanne', 'Roussanne'] },
   { grupo: 'Genéricos', items: ['Rosado', 'Espumante', 'Blend/Corte'] },
 ];
 const OTRO_VALUE = '__otro__'; // valor del <option> "Otro (texto libre)"
 
-/* Color por varietal para el hueco ocupado. Agrupados por familia (tintas en
-   gama vino/púrpura/tierra, blancas en dorado/verde/ámbar, genéricos aparte)
+/* Color por varietal para el hueco ocupado. Agrupados por familia (tintos en
+   gama vino/púrpura/tierra, blancos en dorado/verde/ámbar, genéricos aparte)
    pero elegidos para diferenciarse bien entre sí. Ajustable a gusto. */
 const VARIETAL_COLOR = {
-  // Tintas
+  // Tintos
   'Malbec': '#7c3a99', 'Cabernet Sauvignon': '#6e1a2e', 'Cabernet Franc': '#b0472f',
   'Merlot': '#a22c4f', 'Syrah': '#3f1a38', 'Pinot Noir': '#c05b57', 'Bonarda': '#93361f',
   'Tempranillo': '#7e2c34', 'Tannat': '#4a2757', 'Petit Verdot': '#33244a',
   'Sangiovese': '#c24428', 'Nebbiolo': '#a85228', 'Garnacha': '#d14a2c', 'Carménère': '#5e3a24',
   'Zinfandel': '#b02338', 'Barbera': '#8e2352', 'Montepulciano': '#5c2130', 'Monastrell': '#4e2e4e',
   'Pinotage': '#7a3f44', 'Touriga Nacional': '#5a2a6b',
-  // Blancas (texto oscuro por luminancia)
+  // Blancos (texto oscuro por luminancia)
   'Chardonnay': '#e0a63c', 'Sauvignon Blanc': '#7fb24a', 'Torrontés': '#e8ce55', 'Viognier': '#e88c3c',
   'Chenin Blanc': '#b6c24e', 'Riesling': '#efdd62', 'Semillón': '#c9962f', 'Pinot Grigio': '#a9be8a',
   'Gewürztraminer': '#e79a66', 'Albariño': '#98cc72', 'Verdejo': '#6fa83e', 'Moscatel': '#e6b84a',

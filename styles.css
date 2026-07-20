@@ -866,7 +866,6 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
    que frena suave, sale en 160ms seca. Esa diferencia es lo que hace que
    se sienta intencional en vez de un parpadeo. */
 .toast {
-  --toast-accent: var(--tab-underline);
   position: fixed;
   /* left/right:0 + margin auto en vez de left:50% + translateX: con solo
      left:50% el ancho disponible es del centro al borde derecho, así que el
@@ -878,11 +877,10 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
   width: fit-content;
   bottom: calc(20px + env(safe-area-inset-bottom));
   max-width: min(92vw, 460px);
-  padding: 11px 16px 11px 14px;
+  padding: 11px 16px;
   background: #2e2620;
   color: #f2ebdd;
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-left: 3px solid var(--toast-accent);
   border-radius: 8px;
   box-shadow: 0 10px 30px rgba(30, 20, 10, 0.35);
   font-size: 13.5px;
@@ -902,10 +900,12 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
   transition: opacity 260ms cubic-bezier(0.16, 1, 0.3, 1),
               transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+/* Sin la barra de acento, el fondo es lo único que separa error de aviso
+   normal: el rojo va pleno (el mismo --danger-solid del botón «Borrar»),
+   porque dos marrones oscuros parecidos no se distinguen de un vistazo. */
 .toast--err {
-  --toast-accent: var(--danger-solid);
-  background: #3a201a;
-  color: #ffe9e4;
+  background: var(--danger-solid);
+  color: #ffffff;
 }
 /* El error se puede tocar para sacarlo antes de tiempo; el neutro no, que
    dura poco y no debe robarle toques al mapa. */
