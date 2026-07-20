@@ -108,6 +108,18 @@
           <option value="">Todos los años</option>
         </select>
         <button id="f-clear" class="btn" type="button" hidden><span class="lbl-full">Limpiar filtros</span><span class="lbl-compact">Limpiar</span></button>
+      </div>
+      <div class="sortbar">
+        <label for="v-sort">Ordenar por</label>
+        <select id="v-sort" aria-label="Ordenar la lista de vinos">
+          <option value="nombre">Nombre (A–Z)</option>
+          <option value="cava-desc">Mayor cantidad en cava</option>
+          <option value="cava-asc">Menor cantidad en cava</option>
+          <option value="anio">Año</option>
+          <option value="varietal">Varietal</option>
+          <option value="precio-desc">Mayor precio</option>
+          <option value="precio-asc">Menor precio</option>
+        </select>
         <button id="btn-add-vino" class="btn btn--primary" type="button">Agregar vino</button>
       </div>
       <div class="vinos-scroll">

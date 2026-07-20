@@ -401,6 +401,7 @@ const state = {
   editingVinoId: null,   // vino en edición en el formulario (null = alta)
   mapScrollLeft: 0,      // página del carrusel al salir del mapa (se restaura al volver)
   filters: { q: '', bodega: '', varietal: '', anio: '' },     // filtros del catálogo (§10)
+  sort: 'nombre',                                              // orden del catálogo (§10)
   mapFilters: { q: '', bodega: '', varietal: '', anio: '' },  // filtros del MAPA (§8), independientes
 };
 
@@ -1040,15 +1041,45 @@ function vinoMeta(vino) {
   return [vino.bodega, vino.anio, vino.varietal].filter((p) => p != null && p !== '').join(' · ');
 }
 
+/* Orden del catálogo (§10). Habilita/deshabilita las opciones de precio según
+   haya algún precio cargado; si el orden actual quedó sin datos, cae a nombre. */
+function updateSortOptions() {
+  const sel = $('#v-sort');
+  if (!sel) return;
+  const anyPrice = [...state.vinos.values()].some((v) => v.precioCompra != null);
+  for (const val of ['precio-desc', 'precio-asc']) {
+    const opt = sel.querySelector(`option[value="${val}"]`);
+    if (opt) opt.disabled = !anyPrice;
+  }
+  if (!anyPrice && (state.sort === 'precio-desc' || state.sort === 'precio-asc')) state.sort = 'nombre';
+  if (sel.value !== state.sort) sel.value = state.sort;
+}
+
+/** Comparador según state.sort. occ = Map<id, cantidad en cava>. Desempates y
+    vinos sin dato (año/precio) caen al final, ordenados por nombre. */
+function vinoSortCmp(occ) {
+  const byName = (a, b) => norm(a.nombre).localeCompare(norm(b.nombre));
+  switch (state.sort) {
+    case 'cava-desc': return (a, b) => (occ.get(b.id) || 0) - (occ.get(a.id) || 0) || byName(a, b);
+    case 'cava-asc': return (a, b) => (occ.get(a.id) || 0) - (occ.get(b.id) || 0) || byName(a, b);
+    case 'anio': return (a, b) => (b.anio ?? -Infinity) - (a.anio ?? -Infinity) || byName(a, b);
+    case 'varietal': return (a, b) => norm(a.varietal).localeCompare(norm(b.varietal)) || byName(a, b);
+    case 'precio-desc': return (a, b) => (b.precioCompra ?? -Infinity) - (a.precioCompra ?? -Infinity) || byName(a, b);
+    case 'precio-asc': return (a, b) => (a.precioCompra ?? Infinity) - (b.precioCompra ?? Infinity) || byName(a, b);
+    default: return (a, b) => byName(a, b) || (a.anio || 0) - (b.anio || 0);
+  }
+}
+
 function renderVinos() {
   updateVinoClearBtn();
+  updateSortOptions();
   const listEl = $('#vino-list');
   const emptyEl = $('#vinos-empty');
   const occ = occupancyMap();
 
   const rows = [...state.vinos.values()]
     .filter((v) => vinoMatchesFilters(v, state.filters))
-    .sort((a, b) => norm(a.nombre).localeCompare(norm(b.nombre)) || (a.anio || 0) - (b.anio || 0));
+    .sort(vinoSortCmp(occ));
 
   listEl.textContent = '';
 
@@ -1120,6 +1151,7 @@ function wireVinosView() {
   $('#f-varietal').addEventListener('change', (e) => { state.filters.varietal = e.target.value; renderVinos(); });
   $('#f-anio').addEventListener('change', (e) => { state.filters.anio = e.target.value; renderVinos(); });
   $('#f-clear').addEventListener('click', clearVinoFilters);
+  $('#v-sort').addEventListener('change', (e) => { state.sort = e.target.value; renderVinos(); });
 
   $('#btn-add-vino').addEventListener('click', () => {
     state.pendingSlotId = null;
