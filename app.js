@@ -416,13 +416,21 @@ const state = {
  */
 async function reconcileSlots() {
   const expected = expectedSlotIds();
-  await withTx(state.db, 'slots', 'readwrite', (tx) => {
+  await withTx(state.db, ['slots', 'vinos'], 'readwrite', (tx) => {
     const store = tx.objectStore('slots');
-    return req(store.getAll()).then((existing) => {
+    return Promise.all([req(store.getAll()), req(tx.objectStore('vinos').getAllKeys())]).then(([existing, vinoKeys]) => {
+      const vinoIds = new Set(vinoKeys);
       const have = new Set();
       let huerfanos = 0;
       for (const slot of existing) {
         have.add(slot.id);
+        // Auto-sana referencias colgadas: si apunta a un vino que ya no existe
+        // (borrado sin limpiar la posición), se vacía. Si no, quedaría apuntando
+        // a la nada y rompería el respaldo al exportarse (ver deleteVino).
+        if (slot.vinoId != null && !vinoIds.has(slot.vinoId)) {
+          store.put({ id: slot.id, vinoId: null });
+          slot.vinoId = null;
+        }
         if (!expected.has(slot.id)) {
           if (slot.vinoId == null) store.delete(slot.id); // sobrante vacío: limpieza segura
           else huerfanos++;                               // sobrante con vino: se conserva (ver §1)
@@ -471,8 +479,15 @@ async function deleteVino(vinoId) {
   const slotIds = [...state.slots.values()].filter((s) => s.vinoId === vinoId).map((s) => s.id);
   await withTx(state.db, ['vinos', 'slots'], 'readwrite', (tx) => {
     tx.objectStore('vinos').delete(vinoId);
+    // Vaciar TODAS las posiciones que lo referencian, incluidas las que hayan
+    // quedado fuera del layout actual (no están en state.slots). Si no, quedan
+    // colgadas apuntando a un vino ya borrado y rompen el respaldo al importar.
     const slots = tx.objectStore('slots');
-    for (const id of slotIds) slots.put({ id, vinoId: null });
+    return req(slots.getAll()).then((all) => {
+      for (const s of all) {
+        if (s.vinoId === vinoId) slots.put({ id: s.id, vinoId: null });
+      }
+    });
   });
   state.vinos.delete(vinoId);
   for (const id of slotIds) {
@@ -1610,12 +1625,16 @@ async function buildBackupJson() {
       req(tx.objectStore('colores').getAll()),
     ])
   );
+  // Saneo defensivo: una posición que apunte a un vino ausente se exporta vacía,
+  // así el respaldo nunca lleva referencias colgadas (que rompen el import).
+  const vinoIds = new Set(vinos.map((v) => v.id));
+  const slotsLimpios = slots.map((s) => ({ id: s.id, vinoId: s.vinoId != null && vinoIds.has(s.vinoId) ? s.vinoId : null }));
   const envelope = {
     app: 'cava',
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     vinos,
-    slots,
+    slots: slotsLimpios,
     colores,
   };
   return JSON.stringify(envelope, null, 2);
@@ -1741,7 +1760,8 @@ function validateBackup(data) {
     if (typeof s.id !== 'string' || !SLOT_ID_RE.test(s.id)) return `El respaldo está dañado: la ${donde} no corresponde a esta cava.`;
     if (slotIds.has(s.id)) return `Respaldo inválido: id de posición repetido (${s.id}).`;
     slotIds.add(s.id);
-    if (s.vinoId != null && !vinoIds.has(s.vinoId)) return `Respaldo inválido: ${donde} referencia un vino inexistente.`;
+    // Una referencia colgada (posición → vino borrado) NO invalida el respaldo:
+    // se importa como posición vacía (ver importData). Antes cortaba todo acá.
   }
 
   if (Array.isArray(data.colores)) {
@@ -1801,8 +1821,12 @@ async function importData(data, origen) {
         if (v.fechaCompra != null) vino.fechaCompra = v.fechaCompra;
         vinosStore.put(vino);
       }
+      const vinoIdSet = new Set(data.vinos.map((v) => v.id));
       for (const s of data.slots) {
-        slotsStore.put({ id: s.id, vinoId: s.vinoId == null ? null : s.vinoId });
+        // Referencia colgada (a un vino que no está en el respaldo): entra vacía
+        // en vez de romper la importación entera.
+        const vinoId = s.vinoId != null && vinoIdSet.has(s.vinoId) ? s.vinoId : null;
+        slotsStore.put({ id: s.id, vinoId });
       }
       for (const c of (data.colores || [])) {
         coloresStore.put({ varietal: c.varietal, color: c.color });
