@@ -1103,7 +1103,7 @@ function syncVarietalOtro() {
   input.required = isOtro;
 }
 
-const ANIO_MIN = 1900;
+const ANIO_MIN = 1950;
 
 /**
  * Opciones del año: del que viene hacia atrás hasta ANIO_MIN, más nuevo
