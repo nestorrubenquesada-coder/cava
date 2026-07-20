@@ -17,7 +17,7 @@
   --border-faint: rgba(110, 96, 74, 0.30);
   --surface: #e3dac6;        /* tarjetas, botones, píldora de sección (un paso más claro que el fondo) */
   --surface-hover: #d7ccb7;
-  --header-bg: #6a655c;      /* barra superior: gris cálido de los módulos ciegos */
+  --header-bg: #524c44;      /* barra superior: gris cálido oscuro (familia módulos ciegos), texto blanco */
   --primary: #892b3c;        /* acento bordeaux, a tono cava/pub */
   --primary-hover: #732333;
   --on-primary: #ffffff;
@@ -176,16 +176,17 @@ button { font: inherit; color: inherit; }
   gap: 8px;
 }
 
-/* Botones del header (salvo el CTA primario bordeaux): chips tonales que se
-   integran con la barra oscura, en vez de blancos que saltan. */
+/* Botones del header (salvo el CTA primario bordeaux): sin fondo propio (el
+   mismo del header), solo contenido en blanco y un borde sutil. El feedback
+   oscurece, nunca aclara respecto de la barra. */
 .app-header .btn:not(.btn--primary) {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(0, 0, 0, 0.18);
-  color: var(--fg);
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
 }
-.app-header .btn:not(.btn--primary):active { background: rgba(0, 0, 0, 0.12); }
+.app-header .btn:not(.btn--primary):active { background: rgba(0, 0, 0, 0.20); }
 @media (hover: hover) {
-  .app-header .btn:not(.btn--primary):hover { background: rgba(255, 255, 255, 0.24); }
+  .app-header .btn:not(.btn--primary):hover { background: rgba(0, 0, 0, 0.12); }
 }
 
 /* ---------- 4. Botones ---------- */
@@ -813,6 +814,7 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .dash-tile-value {
   flex: 1;
+  margin-top: 8px; /* separa el número del título para que no queden pegados */
   display: flex;
   align-items: center;
   justify-content: center;
