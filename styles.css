@@ -7,41 +7,45 @@
 /* ---------- 1. Tokens ---------- */
 :root {
   color-scheme: light;
-  --bg: #d6cfc0;             /* fondo gris-beige (cálido, claramente gris) */
-  --fg: #2a251f;
-  --muted: #6e655a;
-  --border: #c3baa8;
-  --border-faint: rgba(120, 108, 92, 0.28);
-  --surface: #e6e0d4;        /* tarjetas, botones, píldora de sección (un paso más claro que el fondo) */
-  --surface-hover: #dcd5c7;
-  --header-bg: #948d7e;      /* barra superior: mismo greige del fondo, más oscuro */
-  --primary: #8a2e43;        /* acento bordeaux, a tono cava/pub */
-  --primary-hover: #7a2739;
+  /* Paleta apenas más cálida, oscura y viva que el greige original (giro de
+     tono al ámbar, L −4%, S +6%): la app se ve mejor con Night Shift puesto,
+     esto lo acerca sin filtro. Contraste verificado: no baja de lo de antes. */
+  --bg: #d0c5b3;             /* fondo greige cálido (claramente gris) */
+  --fg: #262019;
+  --muted: #645646;          /* se oscurece un poco de más: su contraste con --bg estaba al límite */
+  --border: #bcb096;
+  --border-faint: rgba(110, 96, 74, 0.30);
+  --surface: #e3dac6;        /* tarjetas, botones, píldora de sección (un paso más claro que el fondo) */
+  --surface-hover: #d7ccb7;
+  --header-bg: #8d8470;      /* barra superior: mismo greige del fondo, más oscuro */
+  --primary: #892b3c;        /* acento bordeaux, a tono cava/pub */
+  --primary-hover: #732333;
   --on-primary: #ffffff;
-  --danger: #c4392b;
-  --danger-solid: #b5321f;
-  --danger-bg: #f7e4e1;
-  --ok-bg: #e7dfd0;          /* badge "ocupado" del panel de detalle (neutro cálido) */
-  --ok-border: #c9bca3;
-  --ok-fg: #6e5b3e;
-  --tab-underline: #b5822e;  /* subrayado de tabs, ámbar cálido */
-  --shadow-lg: 0 8px 24px rgba(60, 45, 30, 0.25);
+  --danger: #c53a28;
+  --danger-solid: #b6301c;
+  --danger-bg: #f6e2dc;
+  --ok-bg: #e5dbc9;          /* badge "ocupado" del panel de detalle (neutro cálido) */
+  --ok-border: #c4b598;
+  --ok-fg: #6d5836;
+  --tab-underline: #b87f22;  /* subrayado de tabs, ámbar cálido */
+  --shadow-lg: 0 8px 24px rgba(52, 38, 22, 0.27);
   /* Diálogos (§9). --kb lo publica app.js §13 con el alto del teclado. */
-  --backdrop: rgba(38, 28, 16, 0.52); /* velo cálido, misma familia que --shadow-lg */
+  --backdrop: rgba(36, 26, 12, 0.54); /* velo cálido, misma familia que --shadow-lg */
   --dlg-w: 520px;                     /* ancho máximo, igual para los cuatro */
   --dlg-pad: 16px;                    /* aire interno */
   --dlg-edge: 20px;                   /* aire mínimo contra los bordes de la pantalla */
   --kb: 0px;
   /* Estructura metálica del mueble: negra. */
-  --metal: #0b0b0c;
+  --metal: #0c0b09;
   /* Madera de los estantes: lo que asoma entre los huecos. Nogal agrisado:
      misma luminosidad que un marrón cálido pero con menos saturación, para
      que convive con el greige del fondo sin tirar a naranja. */
-  --wood: #634c39;
-  --wood-light: #6d5540;     /* tope del degradado de veta */
-  --wood-dark: #423224;
-  /* Hueco vacío: gris oscuro (como el viejo dark mode), tallado en la madera. */
-  --slot-empty-bg: #1c2027;
+  --wood: #5f4631;
+  --wood-light: #674e38;     /* tope del degradado de veta */
+  --wood-dark: #3d2c1d;
+  /* Hueco vacío: oscuro neutro-cálido, tallado en la madera. Antes tiraba a
+     azul (#1c2027, el más frío del sistema); se lo caldea a tono con el resto. */
+  --slot-empty-bg: #221f20;
   --slot-empty-border: rgba(255, 255, 255, 0.05);
 }
 

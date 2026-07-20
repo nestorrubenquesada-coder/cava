@@ -74,19 +74,19 @@ const OTRO_VALUE = '__otro__'; // valor del <option> "Otro (texto libre)"
    pero elegidos para diferenciarse bien entre sí. Ajustable a gusto. */
 const VARIETAL_COLOR = {
   // Tintos
-  'Malbec': '#7c3a99', 'Cabernet Sauvignon': '#6e1a2e', 'Cabernet Franc': '#b0472f',
-  'Merlot': '#a22c4f', 'Syrah': '#3f1a38', 'Pinot Noir': '#c05b57', 'Bonarda': '#93361f',
-  'Tempranillo': '#7e2c34', 'Tannat': '#4a2757', 'Petit Verdot': '#33244a',
-  'Sangiovese': '#c24428', 'Nebbiolo': '#a85228', 'Garnacha': '#d14a2c', 'Carménère': '#5e3a24',
-  'Zinfandel': '#b02338', 'Barbera': '#8e2352', 'Montepulciano': '#5c2130', 'Monastrell': '#4e2e4e',
-  'Pinotage': '#7a3f44', 'Touriga Nacional': '#5a2a6b',
+  'Malbec': '#783695', 'Cabernet Sauvignon': '#6b172b', 'Cabernet Franc': '#ab432b',
+  'Merlot': '#9e284b', 'Syrah': '#3d1836', 'Pinot Noir': '#bf514d', 'Bonarda': '#8f321c',
+  'Tempranillo': '#7b2931', 'Tannat': '#472554', 'Petit Verdot': '#312248',
+  'Sangiovese': '#bd3f23', 'Nebbiolo': '#a44e24', 'Garnacha': '#cc4527', 'Carménère': '#5b3721',
+  'Zinfandel': '#ac1f34', 'Barbera': '#8a204e', 'Montepulciano': '#591f2e', 'Monastrell': '#4b2c4b',
+  'Pinotage': '#763b40', 'Touriga Nacional': '#572768',
   // Blancos (texto oscuro por luminancia)
-  'Chardonnay': '#e0a63c', 'Sauvignon Blanc': '#7fb24a', 'Torrontés': '#e8ce55', 'Viognier': '#e88c3c',
-  'Chenin Blanc': '#b6c24e', 'Riesling': '#efdd62', 'Semillón': '#c9962f', 'Pinot Grigio': '#a9be8a',
-  'Gewürztraminer': '#e79a66', 'Albariño': '#98cc72', 'Verdejo': '#6fa83e', 'Moscatel': '#e6b84a',
-  'Marsanne': '#c7a85a', 'Roussanne': '#d98e3e',
+  'Chardonnay': '#e2a32f', 'Sauvignon Blanc': '#7aad45', 'Torrontés': '#eacd47', 'Viognier': '#ea862e',
+  'Chenin Blanc': '#b5c243', 'Riesling': '#f1dd53', 'Semillón': '#c4912a', 'Pinot Grigio': '#a3ba80',
+  'Gewürztraminer': '#e89258', 'Albariño': '#91cb67', 'Verdejo': '#6aa339', 'Moscatel': '#e8b53c',
+  'Marsanne': '#c6a44f', 'Roussanne': '#da8931',
   // Genéricos
-  'Rosado': '#e98aa6', 'Espumante': '#d9c56e', 'Blend/Corte': '#8a5a82',
+  'Rosado': '#e97b9c', 'Espumante': '#d9c261', 'Blend/Corte': '#85557d',
 };
 const VARIETAL_FALLBACK = '#6a5f52'; // "Otro"/texto libre/desconocido: pizarra cálida
 
