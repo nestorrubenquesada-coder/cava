@@ -25,7 +25,6 @@
   --ok-border: #c9bca3;
   --ok-fg: #6e5b3e;
   --tab-underline: #b5822e;  /* subrayado de tabs, ámbar cálido */
-  --focus: #0969da;
   --shadow-lg: 0 8px 24px rgba(60, 45, 30, 0.25);
   /* Diálogos (§9). --kb lo publica app.js §13 con el alto del teclado. */
   --backdrop: rgba(38, 28, 16, 0.52); /* velo cálido, misma familia que --shadow-lg */
@@ -72,9 +71,15 @@ body {
 
 button { font: inherit; color: inherit; }
 
+/* Sin anillo de foco: la app se usa por tap en iPad, donde Safari deja el
+   borde azul "pegado" después de tocar (y el foco que devolvemos al cerrar
+   un diálogo, para accesibilidad, lo reactiva). Se saca de raíz — incluye el
+   :focus a secas para tapar también el anillo por defecto del navegador.
+   Contrapartida: se pierde la marca de foco por teclado; para una PWA táctil
+   de un solo usuario es el trato buscado. El caret alcanza en los inputs. */
+:where(button, a, input, select, [tabindex]):focus,
 :where(button, a, input, select, [tabindex]):focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .muted { color: var(--muted); }
