@@ -35,7 +35,6 @@
     <button id="btn-vinos" class="btn" type="button"><span class="lbl-full">Catálogo de Vinos</span><span class="lbl-compact">Vinos</span></button>
 
     <div class="header-actions">
-      <button id="btn-export" class="btn btn--primary" type="button" hidden><span class="lbl-full">Guardar cambios</span><span class="lbl-compact">Guardar</span></button>
       <button id="btn-config" class="btn btn--icon" type="button" aria-label="Configuración" title="Configuración">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M1.75 4.25h5.5M12.75 4.25h1.5M1.75 11.75h1.5M8.75 11.75h5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -43,6 +42,7 @@
           <circle cx="6" cy="11.75" r="2.1" fill="none" stroke="currentColor" stroke-width="1.5"/>
         </svg>
       </button>
+      <button id="btn-export" class="btn btn--primary" type="button" hidden><span class="lbl-full">Guardar cambios</span><span class="lbl-compact">Guardar</span></button>
     </div>
   </header>
 
@@ -119,14 +119,16 @@
 
       <div id="slot-wine" hidden>
         <div class="wine-card">
-          <strong id="slot-wine-nombre"></strong>
-          <span class="muted" id="slot-wine-meta"></span>
-          <span class="muted" id="slot-wine-extra"></span>
+          <div class="wine-card-info">
+            <strong id="slot-wine-nombre"></strong>
+            <span class="muted" id="slot-wine-meta"></span>
+            <span class="muted" id="slot-wine-extra"></span>
+          </div>
+          <button id="btn-slot-edit" class="btn btn--sm" type="button">Editar</button>
         </div>
         <div class="dlg-actions">
-          <button id="btn-slot-empty" class="btn btn--danger" type="button">Vaciar posición</button>
-          <button id="btn-slot-edit" class="btn" type="button">Editar vino</button>
           <button id="btn-slot-change" class="btn" type="button">Cambiar vino</button>
+          <button id="btn-slot-empty" class="btn btn--danger" type="button">Vaciar posición</button>
         </div>
       </div>
 
@@ -202,7 +204,7 @@
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
       </div>
-      <p class="dlg-sub">Con la sincronización activa, «Guardar cambios» sobreescribe siempre el mismo archivo del repositorio — sin descargas.</p>
+      <p class="dlg-sub">Con la sincronización activa, el botón Guardar cambios sobreescribe siempre el mismo archivo del repositorio — sin descargas.</p>
 
       <form id="form-config">
         <div class="field">
@@ -223,19 +225,18 @@
           <label for="gh-token">Token</label>
           <input type="password" id="gh-token" autocomplete="off">
         </div>
-        <p class="cfg-note">Usá un repo <strong>privado</strong> y un token <em>fine-grained</em> (GitHub → Settings → Developer settings) con acceso solo a ese repo y permiso «Contents: Read and write». El token queda guardado únicamente en este dispositivo. Para desactivar la sincronización, vaciá repositorio y token, y guardá.</p>
         <div class="dlg-actions">
           <button id="btn-gh-test" class="btn" type="button">Probar conexión</button>
           <button class="btn btn--primary" type="submit">Guardar</button>
         </div>
+        <p class="cfg-note">Usá un repo <strong>privado</strong> y un token <em>fine-grained</em> (GitHub → Settings → Developer settings) con acceso solo a ese repo y permiso <em>Contents: Read and write</em>. El token queda guardado únicamente en este dispositivo. Para desactivar la sincronización, vaciá repositorio y token, y guardá.</p>
       </form>
 
       <div class="cfg-manual">
-        <h3>Restaurar / respaldo manual</h3>
         <div class="dlg-actions">
           <button id="btn-gh-restore" class="btn" type="button">Restaurar desde GitHub</button>
-          <button id="btn-file-export" class="btn" type="button">Exportar a archivo</button>
-          <button id="btn-file-import" class="btn" type="button">Importar desde archivo</button>
+          <button id="btn-file-export" class="btn" type="button">Exportar archivo</button>
+          <button id="btn-file-import" class="btn" type="button">Importar archivo</button>
           <input id="file-import" type="file" accept="application/json,.json" hidden>
         </div>
       </div>

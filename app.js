@@ -807,7 +807,7 @@ function renderPicker(query) {
   btnCreate.dataset.action = 'create';
   const createLabel = document.createElement('span');
   createLabel.className = 'picker-create';
-  createLabel.textContent = query.trim() ? `＋ Crear «${query.trim()}»` : '＋ Crear vino nuevo';
+  createLabel.textContent = query.trim() ? `＋ Crear ${query.trim()}` : '＋ Crear vino nuevo';
   btnCreate.appendChild(createLabel);
   liCreate.appendChild(btnCreate);
   frag.appendChild(liCreate);
@@ -844,7 +844,7 @@ function wireSlotDialog() {
       try {
         await setSlotVino(state.currentSlotId, btn.dataset.vinoId);
         $('#dlg-slot').close();
-        if (vino) toast(`«${vino.nombre}» ubicado`);
+        if (vino) toast(`${vino.nombre} ubicado`);
       } catch (err) {
         console.error(err);
         toast('No se pudo guardar la posición. Intentá de nuevo.', { error: true });
@@ -956,7 +956,7 @@ function renderVinos() {
     listEl.hidden = true;
     emptyEl.hidden = false;
     emptyEl.textContent = state.vinos.size === 0
-      ? 'Todavía no cargaste vinos. Empezá con «Agregar vino».'
+      ? 'Todavía no cargaste vinos. Empezá con el botón Agregar vino.'
       : 'Sin resultados para los filtros elegidos.';
     return;
   }
@@ -1036,11 +1036,16 @@ function wireVinosView() {
     } else if (btn.dataset.action === 'delete') {
       const count = occupancyMap().get(vino.id) || 0;
       const ok = await confirmDialog({
-        title: `¿Borrar «${vino.nombre}»?`,
+        title: `¿Borrar ${vino.nombre}?`,
         body: 'Sale del catálogo y no se puede deshacer.',
-        detail: count > 0
-          ? `Las ${count} posición${count === 1 ? '' : 'es'} que ocupa en el mapa quedan vacías.`
-          : '',
+        // En singular no va el número: «La posición que ocupa…», no «Las 1
+        // posición…». Cambian el artículo, el verbo y el adjetivo, así que
+        // son dos frases enteras, no un sufijo condicional.
+        detail: count === 1
+          ? 'La posición que ocupa en el mapa queda vacía.'
+          : count > 1
+            ? `Las ${count} posiciones que ocupa en el mapa quedan vacías.`
+            : '',
         confirmLabel: 'Borrar',
         danger: true,
       });
@@ -1051,8 +1056,8 @@ function wireVinosView() {
         populateMapFilterOptions();
         renderVinos();
         toast(count > 0
-          ? `«${vino.nombre}» borrado · ${count} posición${count === 1 ? '' : 'es'} vaciada${count === 1 ? '' : 's'}`
-          : `«${vino.nombre}» borrado`);
+          ? `${vino.nombre} borrado · ${count} posición${count === 1 ? '' : 'es'} vaciada${count === 1 ? '' : 's'}`
+          : `${vino.nombre} borrado`);
       } catch (err) {
         console.error(err);
         toast('No se pudo borrar el vino. Intentá de nuevo.', { error: true });
@@ -1242,9 +1247,9 @@ function wireVinoForm() {
       renderVinos();
       refreshAllSlotEls(); // por si cambió la bodega (inicial) de un vino ya ubicado
       $('#dlg-vino').close();
-      toast(assignTo ? `«${vino.nombre}» creado y ubicado`
-        : esAlta ? `«${vino.nombre}» agregado al catálogo`
-        : `«${vino.nombre}» actualizado`);
+      toast(assignTo ? `${vino.nombre} creado y ubicado`
+        : esAlta ? `${vino.nombre} agregado al catálogo`
+        : `${vino.nombre} actualizado`);
     } catch (err) {
       console.error(err);
       toast('No se pudo guardar el vino. Intentá de nuevo.', { error: true });
@@ -1530,7 +1535,7 @@ async function exportToFile(json) {
   setDirty(false);
   // Nombrar el archivo: en iPad la hoja de compartir y una descarga silenciosa
   // terminan en lugares completamente distintos.
-  toast(`Descargado «${BACKUP_FILENAME}» · ${resumen(contarActual())}`);
+  toast(`Descargado ${BACKUP_FILENAME} · ${resumen(contarActual())}`);
 }
 
 /** Valida el archivo de respaldo. Devuelve un mensaje de error o null si es válido. */
@@ -1662,7 +1667,7 @@ async function restoreFromGithub() {
   try {
     const { sha, body } = await ghGetBackupMeta(cfg);
     if (!body) {
-      task.fail(`Todavía no hay ningún respaldo en «${cfg.repo}». Guardá una vez desde acá para crearlo.`);
+      task.fail(`Todavía no hay ningún respaldo en ${cfg.repo}. Guardá una vez desde acá para crearlo.`);
       return;
     }
     const data = JSON.parse(b64DecodeUtf8(body.content));
@@ -1721,7 +1726,7 @@ async function syncFromGithub() {
       danger: true,
     });
     if (!ok) {
-      toast('Seguís con los datos de este dispositivo. Subilos con «Guardar cambios» cuando quieras.');
+      toast('Seguís con los datos de este dispositivo. Subilos con el botón Guardar cambios cuando quieras.');
       return;
     }
   }
@@ -1760,7 +1765,7 @@ function wireBackup() {
     if (!repo && !token) {
       setGithubConfig(null); // vaciar los dos campos clave = desactivar
       dlg.close();
-      toast('Sincronización desactivada — «Guardar cambios» vuelve a exportar un archivo.');
+      toast('Sincronización desactivada — el botón Guardar cambios vuelve a exportar un archivo.');
       return;
     }
     if (!repo || !token) {
@@ -1768,7 +1773,7 @@ function wireBackup() {
       return;
     }
     if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) {
-      toast('El repositorio va como usuario/repo — por ejemplo, «santi/cava-datos».', { error: true });
+      toast('El repositorio va como usuario/repo — por ejemplo, santi/cava-datos', { error: true });
       return;
     }
     const cfg = {
@@ -1782,7 +1787,7 @@ function wireBackup() {
       return;
     }
     dlg.close();
-    toast(`Sincronización lista con «${cfg.repo}»`);
+    toast(`Sincronización lista con ${cfg.repo}`);
   });
 
   $('#btn-gh-test').addEventListener('click', (e) => {
@@ -1799,7 +1804,7 @@ function wireBackup() {
         const res = await fetch(`https://api.github.com/repos/${repo}`, {
           headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github+json' },
         });
-        if (res.ok) toast(`Todo bien: el token ve «${repo}»`);
+        if (res.ok) toast(`Todo bien: el token ve ${repo}`);
         else toast(ghErrorMsg(res.status), { error: true });
       } catch (_) {
         toast('No se pudo conectar con GitHub. Revisá tu conexión.', { error: true });

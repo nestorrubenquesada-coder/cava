@@ -79,6 +79,48 @@ button { font: inherit; color: inherit; }
 
 .muted { color: var(--muted); }
 
+/* Barras de scroll a tono. El carril gris del navegador parte el modal en
+   dos con una franja que no pertenece a la paleta; con el color del fondo
+   desaparece y solo se ve el pulgar. Se declara de las dos formas porque
+   scrollbar-color es el estándar y ::-webkit-scrollbar lo que entienden
+   Safari y los Chrome viejos. En iOS no aplica: ahí la barra es flotante y
+   la dibuja el sistema. */
+.map-area, .vinos-scroll, .dlg-body, .picker-list {
+  scrollbar-width: thin;
+  scrollbar-color: #a89c88 var(--bg);
+}
+.map-area::-webkit-scrollbar,
+.vinos-scroll::-webkit-scrollbar,
+.dlg-body::-webkit-scrollbar,
+.picker-list::-webkit-scrollbar { width: 11px; height: 11px; }
+
+.map-area::-webkit-scrollbar-track,
+.vinos-scroll::-webkit-scrollbar-track,
+.dlg-body::-webkit-scrollbar-track,
+.picker-list::-webkit-scrollbar-track { background: var(--bg); }
+
+/* El borde del color del fondo + background-clip deja aire alrededor del
+   pulgar, así no toca los bordes del carril. */
+.map-area::-webkit-scrollbar-thumb,
+.vinos-scroll::-webkit-scrollbar-thumb,
+.dlg-body::-webkit-scrollbar-thumb,
+.picker-list::-webkit-scrollbar-thumb {
+  background: #a89c88;
+  border: 2px solid var(--bg);
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+@media (hover: hover) {
+  .map-area::-webkit-scrollbar-thumb:hover,
+  .vinos-scroll::-webkit-scrollbar-thumb:hover,
+  .dlg-body::-webkit-scrollbar-thumb:hover,
+  .picker-list::-webkit-scrollbar-thumb:hover { background: #8d8170; }
+}
+.map-area::-webkit-scrollbar-corner,
+.vinos-scroll::-webkit-scrollbar-corner,
+.dlg-body::-webkit-scrollbar-corner,
+.picker-list::-webkit-scrollbar-corner { background: var(--bg); }
+
 /* ---------- 3. Header ----------
    Una sola barra: el botón "Volver" a la izquierda cuando se ve el
    catálogo; acciones a la derecha. El router (app.js) alterna qué
@@ -491,7 +533,8 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 }
 .toolbar input[type="search"] { flex: 1; min-width: 180px; }
 
-input[type="search"], input[type="text"], input[type="number"], input[type="date"], select {
+input[type="search"], input[type="text"], input[type="number"], input[type="date"],
+input[type="password"], select {
   min-height: 34px;
   padding: 5px 10px;
   font: inherit;
@@ -671,15 +714,25 @@ dialog::backdrop { background: var(--backdrop); }
 .confirm-msg { margin: 0; font-size: 15px; line-height: 1.5; }
 .confirm-detail { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 
+/* Misma estructura que las filas del catálogo (§8): los datos a la izquierda
+   y la acción de editar a la derecha, dentro de la misma tarjeta. */
 .wine-card {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 10px;
   padding: 10px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
 }
+.wine-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wine-card .btn { flex: none; }
 
 /* Selector de vinos: el cuerpo NO scrollea, scrollea la lista. Así la lista
    se mide contra el alto real del diálogo (antes era 40dvh, una fracción
@@ -846,13 +899,28 @@ input[type="date"]::-webkit-datetime-edit-year-field:focus {
 input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted); }
 
 /* Diálogo de configuración (⚙): nota de ayuda y sección de respaldo manual. */
-.cfg-note { color: var(--muted); font-size: 12.5px; margin: 0 0 4px; }
+
+/* Acá las acciones van pegadas al token, no al final del formulario, así que
+   la hairline pasa de arriba a abajo: sigue separando los botones de la nota
+   de ayuda, solo que ahora el orden entre las dos cosas está invertido.
+   El selector lleva el id del form para ganarle a la regla genérica de §9. */
+#form-config .dlg-actions {
+  margin-top: 16px;
+  padding-top: 0;
+  border-top: 0;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.cfg-note { color: var(--muted); font-size: 12.5px; margin: 0; }
 .cfg-manual {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
 }
-.cfg-manual h3 { margin: 0 0 10px; font-size: 13px; }
+/* Sin título: la hairline de arriba ya separa esta zona del formulario de
+   sincronización, y los tres botones se explican solos. */
 .cfg-manual .dlg-actions { justify-content: flex-start; margin-top: 0; }
 
 /* ---------- 11. Toast ----------
@@ -964,7 +1032,8 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
 @media (pointer: coarse) {
   .btn { min-height: 38px; }
   .btn--sm { min-height: 34px; }
-  input[type="search"], input[type="text"], input[type="number"], input[type="date"], select {
+  input[type="search"], input[type="text"], input[type="number"], input[type="date"],
+  input[type="password"], select {
     min-height: 38px;
     font-size: 16px;
   }
