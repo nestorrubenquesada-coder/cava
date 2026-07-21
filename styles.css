@@ -64,8 +64,11 @@ body {
   line-height: 1.5;
   color: var(--fg);
   background: var(--bg);
-  height: 100vh;   /* fallback */
-  height: 100dvh;  /* Safari 15.4+: altura real del viewport */
+  /* position:fixed + inset:0 fuerza cubrir TODA la pantalla en standalone,
+     incluida el área del home indicator. Con height:100dvh iOS dejaba un gap
+     abajo (la app no llegaba al borde físico inferior). */
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -730,9 +733,9 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  /* El body ya no reserva el safe-area inferior (full-bleed): lo agrega esta
-     zona scrolleable para que la última tarjeta no quede bajo el home indicator. */
-  padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+  /* Sin margen inferior: el contenido llega hasta el borde físico (el home
+     indicator translúcido queda por encima). */
+  padding: 16px 12px 0;
 }
 .dash-grid {
   display: grid;
