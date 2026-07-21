@@ -6,7 +6,7 @@
    de CACHE (cava-v1 → cava-v2, etc.). Sin ese bump, los clientes instalados
    siguen viendo la versión vieja para siempre.
    ============================================================================ */
-const CACHE = 'cava-v59';
+const CACHE = 'cava-v60';
 
 const ASSETS = [
   './',
@@ -40,16 +40,29 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
-  if (new URL(request.url).origin !== self.location.origin) return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
 
+  // El "shell" (navegaciones + HTML/CSS/JS) va NETWORK-FIRST: siempre la última
+  // versión si hay red, y se refresca la cache. Sin red, cae a la cache. Así los
+  // cambios se ven al recargar, sin depender de bumpear CACHE ni de cerrar la PWA.
+  const isShell = request.mode === 'navigate' || /\.(html|css|js)$/.test(url.pathname);
+  if (isShell) {
+    event.respondWith(
+      fetch(request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+          return res;
+        })
+        .catch(() => caches.match(request, { ignoreSearch: true })
+          .then((cached) => cached || (request.mode === 'navigate' ? caches.match('./index.html') : Response.error())))
+    );
+    return;
+  }
+
+  // Resto (íconos, manifest): CACHE-FIRST (casi nunca cambian).
   event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).catch(() => {
-        // Sin red y sin cache: para navegaciones, devolvé el shell de la app.
-        if (request.mode === 'navigate') return caches.match('./index.html');
-        return Response.error();
-      });
-    })
+    caches.match(request, { ignoreSearch: true }).then((cached) => cached || fetch(request))
   );
 });

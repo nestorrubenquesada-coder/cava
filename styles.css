@@ -64,21 +64,16 @@ body {
   line-height: 1.5;
   color: var(--fg);
   background: var(--bg);
-  /* position:fixed + inset:0 fuerza cubrir TODA la pantalla en standalone,
-     incluida el área del home indicator. Con height:100dvh iOS dejaba un gap
-     abajo (la app no llegaba al borde físico inferior). */
-  position: fixed;
-  inset: 0;
+  height: 100vh;   /* fallback */
+  height: 100dvh;  /* altura real del viewport (en standalone = pantalla completa) */
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* Full-bleed vertical: el inset superior lo absorbe el header (§3) y el
-     inferior NO se reserva acá, para que la app llegue al borde físico abajo
-     también (antes esta franja fija se veía como un margen inferior en todo el
-     sistema). El safe-area inferior lo agregan las zonas scrolleables
-     (dash-scroll, vinos-scroll) y los elementos fixed (botón flotante,
-     diálogos): así el contenido no queda bajo el home indicator, pero el fondo
-     sí llega hasta el borde. */
+  /* Full-bleed vertical: el inset superior lo absorbe el header (§3) y abajo NO
+     se reserva safe-area acá, para que el contenido llegue al borde físico
+     inferior (esa franja fija se veía como margen, sobre todo en el dashboard).
+     El safe-area inferior lo ponen los elementos fixed que lo necesitan (botón
+     flotante de vinos, diálogos). */
   padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
   -webkit-text-size-adjust: 100%;
 }
