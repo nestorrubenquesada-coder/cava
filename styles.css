@@ -733,10 +733,9 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  /* El fondo llega al borde (body position:fixed), pero el contenido necesita
-     este padding abajo para poder scrollear la ÚLTIMA tarjeta por ENCIMA de la
-     barra del navegador / home indicator; si no, queda cortada por detrás. */
-  padding: 16px 12px calc(24px + env(safe-area-inset-bottom));
+  /* Full-bleed: sin safe-area reservada — al final del scroll la última tarjeta
+     llega hasta el borde físico (el home indicator translúcido pasa por encima). */
+  padding: 16px 12px;
 }
 .dash-grid {
   display: grid;
