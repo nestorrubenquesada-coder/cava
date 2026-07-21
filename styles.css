@@ -56,6 +56,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body { margin: 0; padding: 0; }
+html { background: var(--bg); } /* respaldo: cubre cualquier gap sub-pixel bajo el body en standalone */
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
@@ -68,9 +69,14 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* El inset superior (y los laterales a la altura del header) los absorbe
-     el propio header (§3), para que su fondo llegue hasta el borde físico. */
-  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Full-bleed vertical: el inset superior lo absorbe el header (§3) y el
+     inferior NO se reserva acá, para que la app llegue al borde físico abajo
+     también (antes esta franja fija se veía como un margen inferior en todo el
+     sistema). El safe-area inferior lo agregan las zonas scrolleables
+     (dash-scroll, vinos-scroll) y los elementos fixed (botón flotante,
+     diálogos): así el contenido no queda bajo el home indicator, pero el fondo
+     sí llega hasta el borde. */
+  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -724,9 +730,9 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  /* El safe-area inferior ya lo reserva el body (§2): sumarlo acá lo duplicaba
-     y dejaba un margen grande abajo en mobile. */
-  padding: 16px 12px;
+  /* El body ya no reserva el safe-area inferior (full-bleed): lo agrega esta
+     zona scrolleable para que la última tarjeta no quede bajo el home indicator. */
+  padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
 }
 .dash-grid {
   display: grid;
@@ -1349,7 +1355,7 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
     min-height: 44px; /* ~16% más alto que el .btn touch (38px), y buen tap-target */
     box-shadow: var(--shadow-lg);
   }
-  .vinos-scroll { padding-bottom: 72px; }
+  .vinos-scroll { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 }
 
 /* Touch: áreas táctiles más generosas e inputs de 16px — con menos, iOS
