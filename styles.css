@@ -1352,8 +1352,9 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
      lista; .vinos-scroll agrega aire abajo para que el último vino no quede tapado). */
   #btn-add-vino {
     position: fixed;
-    left: calc(12px + env(safe-area-inset-left));
-    right: calc(12px + env(safe-area-inset-right));
+    /* 10% extra por lado = ~20% más angosto que de borde a borde, centrado. */
+    left: calc(10% + 12px + env(safe-area-inset-left));
+    right: calc(10% + 12px + env(safe-area-inset-right));
     bottom: calc(12px + env(safe-area-inset-bottom));
     z-index: 40;
     margin: 0;
