@@ -56,14 +56,14 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body { margin: 0; padding: 0; }
-html { background: #007aff; } /* DEBUG temporal: azul = html asomando (gap bajo el body) */
+html { background: var(--bg); } /* respaldo por si asoma algo bajo el body */
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--fg);
-  background: #ff2d55; /* DEBUG temporal: rojo = fondo del body (área que cubre la app) */
+  background: var(--bg);
   /* En iOS, height:100dvh NO llega hasta el borde físico inferior (deja la
      franja del home indicator / barra del navegador, que asoma como margen).
      position:fixed + inset:0 con viewport-fit=cover cubre TODA la pantalla,
@@ -733,9 +733,10 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  /* Sin margen inferior: el contenido llega hasta el borde físico (el home
-     indicator translúcido queda por encima). */
-  padding: 16px 12px 0;
+  /* El fondo llega al borde (body position:fixed), pero el contenido necesita
+     este padding abajo para poder scrollear la ÚLTIMA tarjeta por ENCIMA de la
+     barra del navegador / home indicator; si no, queda cortada por detrás. */
+  padding: 16px 12px calc(24px + env(safe-area-inset-bottom));
 }
 .dash-grid {
   display: grid;
