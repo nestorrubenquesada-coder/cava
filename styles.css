@@ -64,8 +64,13 @@ body {
   line-height: 1.5;
   color: var(--fg);
   background: var(--bg);
-  height: 100vh;   /* fallback */
-  height: 100dvh;  /* altura real del viewport (en standalone = pantalla completa) */
+  /* En iOS, height:100dvh NO llega hasta el borde físico inferior (deja la
+     franja del home indicator / barra del navegador, que asoma como margen).
+     position:fixed + inset:0 con viewport-fit=cover cubre TODA la pantalla,
+     de borde a borde, tanto en Safari como instalada. */
+  position: fixed;
+  inset: 0;
+  height: auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
