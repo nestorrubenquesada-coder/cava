@@ -66,15 +66,13 @@ body {
   line-height: 1.5;
   color: var(--fg);
   background: var(--bg);
-  /* Cobertura total hasta el borde físico inferior. Medido en dispositivo
-     (chip de debug): con 100lvh el body termina en 735 de 852 (el viewport
-     "grande" de Safari NO incluye la zona de la barra flotante); con
-     position:fixed + inset:0 y viewport-fit=cover llega a 852 — pinta
-     detrás de la barra de Safari y del home indicator. En la PWA (sin
-     barra) ambas dan pantalla completa. OJO: no declarar height acá —
-     con top y bottom fijados, un height lo pisaría. */
-  position: fixed;
-  inset: 0;
+  /* 100lvh = viewport grande: en la PWA instalada cubre la pantalla completa
+     hasta el borde físico (medido en dispositivo: body⌄ = 852 = pantalla).
+     En Safari suelto queda la franja de la barra flotante (~117pt): es zona
+     del navegador; position:fixed+inset:0 la pintaba pero rompía el layout
+     de la PWA, así que se prioriza la PWA, que es como se usa la app. */
+  height: 100vh;   /* fallback */
+  height: 100lvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
