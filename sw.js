@@ -6,7 +6,7 @@
    de CACHE (cava-v1 → cava-v2, etc.). Sin ese bump, los clientes instalados
    siguen viendo la versión vieja para siempre.
    ============================================================================ */
-const CACHE = 'cava-v68';
+const CACHE = 'cava-v69';
 
 const ASSETS = [
   './',

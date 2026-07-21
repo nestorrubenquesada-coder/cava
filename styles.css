@@ -1355,7 +1355,10 @@ input[type="date"]:not(.has-value)::-webkit-datetime-edit { color: var(--muted);
     /* 10% extra por lado = ~20% más angosto que de borde a borde, centrado. */
     left: calc(10% + 12px + env(safe-area-inset-left));
     right: calc(10% + 12px + env(safe-area-inset-right));
-    bottom: calc(12px + env(safe-area-inset-bottom));
+    /* Más pegado al borde: entra un poco en la zona del safe-area (el botón
+       angosto convive con el home indicator) pero sin quedar nunca a menos
+       de 10px del borde donde no hay inset (navegador de escritorio). */
+    bottom: max(10px, calc(env(safe-area-inset-bottom) - 10px));
     z-index: 40;
     margin: 0;
     min-height: 44px; /* ~16% más alto que el .btn touch (38px), y buen tap-target */
