@@ -724,7 +724,9 @@ input[type="number"]::-webkit-inner-spin-button {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+  /* El safe-area inferior ya lo reserva el body (§2): sumarlo acá lo duplicaba
+     y dejaba un margen grande abajo en mobile. */
+  padding: 16px 12px;
 }
 .dash-grid {
   display: grid;
